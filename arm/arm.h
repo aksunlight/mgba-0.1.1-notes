@@ -9,6 +9,7 @@
 #include "util/common.h"
 
 /*
+ARM7TDMI芯片 -> ARMv4T指令集
 在用户模式下ARM可见的寄存器有16个32位的寄存器（R0到R15）和一个当前程序状态寄存器CPSR
 其中R15是程序计数器PC，R14用于存储子程序的返回地址LR，R13用于存储堆栈栈顶SP
 */
@@ -76,7 +77,8 @@ enum ExecutionVector {			//异常向量表
 例如，当使用快速中断模式下的寄存器时，寄存器R8和寄存器R9分别记作R8_fiq、R9_fiq
 当使用用户模式下的寄存器时，寄存器R8和寄存器R9分别记作R8_usr、R9_usr等
 对于备份寄存器R13和R14来说，每个寄存器对应6个不同的物理寄存器
-其中的一个是用户模式和系统模式共用的；另外的5个对应于其他5种处理器模式。
+其中的一个是用户模式和系统模式共用的；另外的5个对应于其他5种处理器模式
+参考：https://developer.arm.com/documentation/ddi0229/c/BGBJCJAE
 */
 enum RegisterBank {			
 	BANK_NONE = 0,		//对应user mode和sys mode下的备份寄存器组，这两种模式间的切换并不需要改变备份寄存器组
@@ -114,7 +116,7 @@ PSR功能有：保存最近的逻辑或者算术操作的信息、控制中断�
 */
 union PSR {
 	struct {	//位域语法：type-specifier declarator(opt):constant-expression
-			//位域用法：冒号后指定域的宽度（以位为单位），位域在表达式中的使用方式与同样基类型使用变量的方式完全相同，无论位域中有多少位
+				//位域用法：冒号后指定域的宽度（以位为单位），位域在表达式中的使用方式与同样基类型使用变量的方式完全相同，无论位域中有多少位
 #if defined(__POWERPC__) || defined(__PPC__)
 		////条件标志位(高4位 N,Z,C,V)
 		unsigned n : 1;		//第31位Negative：负数 ? 1 : 0
@@ -126,7 +128,7 @@ union PSR {
 		unsigned i : 1;		//第7位IRQ disable：I=1时IRQ禁止
 		unsigned f : 1;		//第6位FIQ disable：f=1时FIQ禁止
 		enum ExecutionMode t : 1;	//第5位Thumb state bit：t=0时处于ARM状态否则处于Thumb状态
-		enum PrivilegeMode priv : 5;	//第0位到第5位Mode bit：这5位组合控制处理器处于什么工作模式
+		enum PrivilegeMode priv : 5;	//第0位到第4位Mode bit：这5位组合控制处理器处于什么工作模式
 #else
 		enum PrivilegeMode priv : 5;
 		enum ExecutionMode t : 1;
@@ -179,10 +181,10 @@ struct ARMInterruptHandler {	//ARM中断处理程序
 	void (*hitStub)(struct ARMCore* cpu, uint32_t opcode);
 };
 
-struct ARMComponent {		//ARM组分
+struct ARMComponent {		//ARM进程？
 	uint32_t id;
-	void (*init)(struct ARMCore* cpu, struct ARMComponent* component);	//初始化ARM组分
-	void (*deinit)(struct ARMComponent* component);		//
+	void (*init)(struct ARMCore* cpu, struct ARMComponent* component);
+	void (*deinit)(struct ARMComponent* component);
 };
 
 struct ARMCore {		//ARM核心
@@ -207,14 +209,14 @@ struct ARMCore {		//ARM核心
 	struct ARMMemory memory;		//内存	
 	struct ARMInterruptHandler irqh;	//中断句柄
 
-	struct ARMComponent* master;	//工作主线？
+	struct ARMComponent* master;	//主进程？
 
-	int numComponents;		//组分个数
-	struct ARMComponent** components;	//组分二级地址
+	int numComponents;		//其他进程？
+	struct ARMComponent** components;	
 };
 
 void ARMInit(struct ARMCore* cpu);		//初始化
-void ARMDeinit(struct ARMCore* cpu);		//另一种初始化方式
+void ARMDeinit(struct ARMCore* cpu);	//另一种初始化方式
 void ARMSetComponents(struct ARMCore* cpu, struct ARMComponent* master, int extra, struct ARMComponent** extras);	//设置组分
 
 void ARMReset(struct ARMCore* cpu);		//重置
@@ -223,6 +225,6 @@ void ARMRaiseIRQ(struct ARMCore*);		//拉起普通中断
 void ARMRaiseSWI(struct ARMCore*);		//拉起软中断
 
 void ARMRun(struct ARMCore* cpu);		//单步运行
-void ARMRunLoop(struct ARMCore* cpu);		//循环运行
+void ARMRunLoop(struct ARMCore* cpu);	//循环运行
 
 #endif

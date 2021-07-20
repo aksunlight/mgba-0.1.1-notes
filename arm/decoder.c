@@ -17,11 +17,11 @@
 	buffer += AMOUNT; \
 	blen -= AMOUNT;
 
-static int _decodeRegister(int reg, char* buffer, int blen);
-static int _decodeRegisterList(int list, char* buffer, int blen);
-static int _decodePCRelative(uint32_t address, uint32_t pc, char* buffer, int blen);
-static int _decodeMemory(struct ARMMemoryAccess memory, int pc, char* buffer, int blen);
-static int _decodeShift(union ARMOperand operand, bool reg, char* buffer, int blen);
+static int _decodeRegister(int reg, char* buffer, int blen);	//解码寄存器
+static int _decodeRegisterList(int list, char* buffer, int blen);	//解码寄存器组
+static int _decodePCRelative(uint32_t address, uint32_t pc, char* buffer, int blen);	//解码PC寄存器
+static int _decodeMemory(struct ARMMemoryAccess memory, int pc, char* buffer, int blen);	//解码内存
+static int _decodeShift(union ARMOperand operand, bool reg, char* buffer, int blen);		//解码偏移量
 
 static const char* _armConditions[] = {
 	"eq",
@@ -302,7 +302,7 @@ static const char* _armAccessTypeStrings[] = {
 	""
 };
 
-int ARMDisassemble(struct ARMInstructionInfo* info, uint32_t pc, char* buffer, int blen) {
+int ARMDisassemble(struct ARMInstructionInfo* info, uint32_t pc, char* buffer, int blen) {	//反汇编解码指令
 	const char* mnemonic = _armMnemonicStrings[info->mnemonic];
 	int written;
 	int total = 0;

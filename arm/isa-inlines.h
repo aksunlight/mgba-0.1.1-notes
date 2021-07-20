@@ -49,6 +49,7 @@
 #define ARM_STUB cpu->irqh.hitStub(cpu, opcode)
 #define ARM_ILL cpu->irqh.hitIllegal(cpu, opcode)
 
+//写ARM状态所用的程序计数器
 #define ARM_WRITE_PC \
 	cpu->gprs[ARM_PC] = (cpu->gprs[ARM_PC] & -WORD_SIZE_ARM); \
 	cpu->memory.setActiveRegion(cpu, cpu->gprs[ARM_PC]); \
@@ -56,6 +57,7 @@
 	cpu->gprs[ARM_PC] += WORD_SIZE_ARM; \
 	currentCycles += 2 + cpu->memory.activeUncachedCycles32 + cpu->memory.activeSeqCycles32;
 
+//写thumb状态所用的程序计数器
 #define THUMB_WRITE_PC \
 	cpu->gprs[ARM_PC] = (cpu->gprs[ARM_PC] & -WORD_SIZE_THUMB); \
 	cpu->memory.setActiveRegion(cpu, cpu->gprs[ARM_PC]); \
@@ -63,10 +65,12 @@
 	cpu->gprs[ARM_PC] += WORD_SIZE_THUMB; \
 	currentCycles += 2 + cpu->memory.activeUncachedCycles16 + cpu->memory.activeSeqCycles16;
 
+//需要设置SPRS的工作模式
 static inline int _ARMModeHasSPSR(enum PrivilegeMode mode) {
 	return mode != MODE_SYSTEM && mode != MODE_USER;
 }
 
+//设置CPU工作状态
 static inline void _ARMSetMode(struct ARMCore* cpu, enum ExecutionMode executionMode) {
 	if (executionMode == cpu->executionMode) {
 		return;
@@ -83,6 +87,7 @@ static inline void _ARMSetMode(struct ARMCore* cpu, enum ExecutionMode execution
 	cpu->nextEvent = 0;
 }
 
+//读当前程序状态寄存器
 static inline void _ARMReadCPSR(struct ARMCore* cpu) {
 	_ARMSetMode(cpu, cpu->cpsr.t);
 	ARMSetPrivilegeMode(cpu, cpu->cpsr.priv);

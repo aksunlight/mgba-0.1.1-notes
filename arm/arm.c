@@ -70,6 +70,7 @@ static inline enum RegisterBank _ARMSelectBank(enum PrivilegeMode mode) {
 	}
 }
 
+//进程初始化
 void ARMInit(struct ARMCore* cpu) {
 	cpu->master->init(cpu, cpu->master);
 	int i;
@@ -78,6 +79,7 @@ void ARMInit(struct ARMCore* cpu) {
 	}
 }
 
+//另一种初始化进程的方式
 void ARMDeinit(struct ARMCore* cpu) {
 	if (cpu->master->deinit) {
 		cpu->master->deinit(cpu->master);
@@ -90,6 +92,7 @@ void ARMDeinit(struct ARMCore* cpu) {
 	}
 }
 
+//设置系统进程
 void ARMSetComponents(struct ARMCore* cpu, struct ARMComponent* master, int extra, struct ARMComponent** extras) {
 	cpu->master = master;
 	cpu->numComponents = extra;
@@ -125,7 +128,7 @@ void ARMReset(struct ARMCore* cpu) {
 	cpu->shifterCarryOut = 0;
 
 	cpu->executionMode = MODE_THUMB;
-	_ARMSetMode(cpu, MODE_ARM);
+	_ARMSetMode(cpu, MODE_ARM);		//设置CPU工作状态
 
 	int currentCycles = 0;
 	ARM_WRITE_PC;		//写ARM程序计数器
@@ -190,15 +193,16 @@ void ARMRaiseSWI(struct ARMCore* cpu) {
 }
 
 /*
+ARM7TDMI芯片 -> ARMv4T指令集
 ARM32位指令格式：<opcode>{<cond>}{S}<Rd><Rn>{<shifter_operand>}
 31-28	27-25	24-21	20  	19-16	15-12	11-0
 cond	001		opcode	S		Rn		Rd		shifter_operand
 cond：执行条件，如EQ，NE等
 opcode：操作码（指令助记符），如LDR，STR等
 S：   是否影响CPSR寄存器的值
-Rn：  第一个操作数的寄存器
-Rd：  目标寄存器
-shifter_operand：	第二个操作数
+Rn：  第一个操作数的寄存器编码
+Rd：  目标寄存器编码
+shifter_operand：	第二个操作数，高5位11-7是立即数，低4位3-0是移位数目
 */
 
 //ARM状态的指令执行步骤
