@@ -15,7 +15,7 @@
 enum {
 	ARM_SP = 13,	//SP: 栈指针寄存器，13号寄存器
 	ARM_LR = 14,	//LR: 链接寄存器，存储于程序返回地址，14号寄存器
-	ARM_PC = 15		//PC: 程序计数器，15号寄存器
+	ARM_PC = 15	//PC: 程序计数器，15号寄存器
 };
 
 /*
@@ -29,25 +29,26 @@ enum ExecutionMode {
 };
 
 /*
-ARM芯片有USER、FIQ、IRQ、SVC、ABT、SYS七种工作模式，除了USER模式其它6种处理器模式称为特权模式
+ARM芯片有USER、FIQ、IRQ、SVC、ABT、SYS七种工作模式（新型芯片有Secure Monitor模式），除了USER模式其它6种处理器模式称为特权模式
 特权模式下，程序可以访问所有的系统资源，也可以任意地进行处理器模式的切换，特权模式中，除系统模式外，其他5种模式又称为异常模式
 大多数的用户程序运行在用户模式下，此时，应用程序不能够访问一些受操作系统保护的系统资源，应用程序也不能直接进行处理器模式的切换
 用户模式下，当需要进行处理器模式切换时，应用程序可以产生异常处理，在异常处理中进行处理器模式的切换
-ARM指令集中提供了两条产生异常的指令，通过这两条指令可以用软件的方法实现异常，其中一个就是中断指令SWI
+ARM指令集中提供了两条产生异常的指令，通过这两条指令可以用软件的方法实现异常，其中一个就是软中断指令SWI
+超级用户模式是CPU上电后默认模式，因此在该模式下主要用来做系统的初始化，软中断处理也在该模式下，当用户模式下的用户程序请求使用硬件资源时通过软件中断进入该模式
 */
 enum PrivilegeMode {
-	MODE_USER = 0x10,			//用户模式，正常程序运行模式
-	MODE_FIQ = 0x11,			//快速中断模式，快速中断处理
-	MODE_IRQ = 0x12,			//外部中断模式，普通中断处理
-	MODE_SUPERVISOR = 0x13,		//超级用户模式，提供操作系统使用的一种保护模式
-	MODE_ABORT = 0x17,			//数据访问终止模式，用于虚拟存储和存储保护
-	MODE_UNDEFINED = 0x1B,		//未定义指令终止模式，用于支持通过软件仿真硬件的协处理
-	MODE_SYSTEM = 0x1F			//系统模式，用于运行特权级的操作系统任务
+	MODE_USER = 0x10,			//用户模式(PSR低5位为10000)，正常程序运行模式
+	MODE_FIQ = 0x11,			//快速中断模式(PSR低5位为10001)，快速中断处理，用于高速数据传输
+	MODE_IRQ = 0x12,			//外部中断模式(PSR低5位为10010)，普通中断处理
+	MODE_SUPERVISOR = 0x13,			//超级用户模式(PSR低5位为10011)，提供操作系统使用的一种保护模式
+	MODE_ABORT = 0x17,			//数据访问终止模式(PSR低5位为10111)，当数据或指令预取终止时进入该模式，用于虚拟存储和存储保护
+	MODE_UNDEFINED = 0x1B,			//未定义指令终止模式(PSR低5位为11011)，当未定义的指令执行时进入该模式，用于支持通过软件仿真硬件的协处理
+	MODE_SYSTEM = 0x1F			//系统模式(PSR低5位为11111)，用于运行特权级的操作系统任务
 };
 
 /*
-ARM状态：32位，ARM状态执行字对齐的32位ARM指令
-Thumb状态，16位，Thumb状态执行半字对齐的16位的Thumb指令
+ARM状态：32位，ARM状态执行字（ARM架构中字是32位4byte）对齐的32位ARM指令
+Thumb状态，16位，Thumb状态执行半字（ARM架构中半字是16位2byte）对齐的16位的Thumb指令
 */
 enum WordSize {
 	WORD_SIZE_ARM = 4,
@@ -86,28 +87,46 @@ enum RegisterBank {
 	BANK_UNDEFINED = 5
 };
 
+/*
+LSM（load/store multiple）是存储加载多个的意思，ARM的LSM指令包括STM、LDM等等
+ARM的多数据传输指令（STM、LDM）中，STM（store multiple register）是存储多个寄存器的意思，LDM（load multiple register）是加载多个寄存器的意思
+存储多个寄存器意思是将多个寄存器的数据存入某一地址空间，加载多个寄存器的意思是将某一连续地址空间的数据存入多个寄存器
+*/
 enum LSMDirection {
 	LSM_B = 1,
 	LSM_D = 2,
-	LSM_IA = 0,
-	LSM_IB = 1,
-	LSM_DA = 2,
-	LSM_DB = 3
+	LSM_IA = 0,	//IA：increase after, 完成操作而后地址递增
+	LSM_IB = 1,	//IB：increase before, 地址先增而后完成操作
+	LSM_DA = 2,	//DA: decrease after, 完成操作而后地址递减
+	LSM_DB = 3	//DB: decrease before, 地址先减而后完成操作
 };
 
+struct ARMCore;
 
+/*
+ARM芯片的程序状态寄存器PSR（Program State Register）有两个
+一个是当前程序状态寄存器CPSR（Current Program State Register）
+另一个是保存的程序状态寄存器SPSR（Saved Program State Register）
+每一种处理器模式下都有一个专用的物理寄存器作为备份的程序状态寄存器即SPSR
+当特定的异常发生时, 这个物理寄存器负责保存CPSR当前程序状态寄存器的内容
+当异常处理程序返回时, 再将内容恢复到当前程序状态器中,继续向下执行原来程
+PSR功能有：保存最近的逻辑或者算术操作的信息、控制中断时使能、设置处理器的工作模式等
+*/
 union PSR {
-	struct {
+	struct {	//位域语法：type-specifier declarator(opt):constant-expression
+			//位域用法：冒号后指定域的宽度（以位为单位），位域在表达式中的使用方式与同样基类型使用变量的方式完全相同，无论位域中有多少位
 #if defined(__POWERPC__) || defined(__PPC__)
-		unsigned n : 1;
-		unsigned z : 1;
-		unsigned c : 1;
-		unsigned v : 1;
-		unsigned : 20;
-		unsigned i : 1;
-		unsigned f : 1;
-		enum ExecutionMode t : 1;
-		enum PrivilegeMode priv : 5;
+		////条件标志位(高4位 N,Z,C,V)
+		unsigned n : 1;		//第31位Negative：负数 ? 1 : 0
+		unsigned z : 1;		//第30位Zero：运算结果为0 ? 1 : 0
+		unsigned c : 1;		//第29位Carry：进位标志，加/减法中产生了进/借位则为1
+		unsigned v : 1;		//第28位Overflow：溢出标志，加减法中产生了溢出则为1
+		unsigned : 20;		//第8位到第27位均不用考虑，并不重要
+		//控制位(低8位 I,F,T,M[4:0]) 当发生异常时, 这些位的值将发生相应的变化, 在特权模式下, 也可以通过软件来修改这些位
+		unsigned i : 1;		//第7位IRQ disable：I=1时IRQ禁止
+		unsigned f : 1;		//第6位FIQ disable：f=1时FIQ禁止
+		enum ExecutionMode t : 1;	//第5位Thumb state bit：t=0时处于ARM状态否则处于Thumb状态
+		enum PrivilegeMode priv : 5;	//第0位到第5位Mode bit：这5位组合控制处理器处于什么工作模式
 #else
 		enum PrivilegeMode priv : 5;
 		enum ExecutionMode t : 1;
@@ -167,15 +186,13 @@ struct ARMComponent {		//ARM组分
 };
 
 struct ARMCore {		//ARM核心
-	//GPRS英文全称为 General packet radio service，中文名称为通用无线分组业务
-	//是一种基于GSM系统的无线分组交换技术，提供端到端的、广域的无线IP连接
 	int32_t gprs[16];	//当前16个32位的寄存器（R0到R15）
 	union PSR cpsr;		//当前程序状态寄存器
 	union PSR spsr;		//保存的程序状态寄存器
 
 	int32_t cycles;		//时钟周期数？指令周期数？机器周期数？
 	int32_t nextEvent;	//直到完成下一条指令/事件的所有时钟周期数？指令周期数？机器周期数？
-	int halted;			//停止
+	int halted;		//停止
 
 	int32_t bankedRegisters[6][7];	//备份寄存器组，存储不同工作模式下每种工作模式的bankedRegisters，
 	int32_t bankedSPSRs[6];		//SPSR寄存器，存储不同工作模式每种工作模式下的SPSR
@@ -187,7 +204,7 @@ struct ARMCore {		//ARM核心
 	enum ExecutionMode executionMode;	//当前工作状态？
 	enum PrivilegeMode privilegeMode;	//当前工作模式？
 
-	struct ARMMemory memory;			//内存	
+	struct ARMMemory memory;		//内存	
 	struct ARMInterruptHandler irqh;	//中断句柄
 
 	struct ARMComponent* master;	//工作主线？
@@ -197,7 +214,7 @@ struct ARMCore {		//ARM核心
 };
 
 void ARMInit(struct ARMCore* cpu);		//初始化
-void ARMDeinit(struct ARMCore* cpu);	//另一种初始化方式
+void ARMDeinit(struct ARMCore* cpu);		//另一种初始化方式
 void ARMSetComponents(struct ARMCore* cpu, struct ARMComponent* master, int extra, struct ARMComponent** extras);	//设置组分
 
 void ARMReset(struct ARMCore* cpu);		//重置
@@ -206,6 +223,6 @@ void ARMRaiseIRQ(struct ARMCore*);		//拉起普通中断
 void ARMRaiseSWI(struct ARMCore*);		//拉起软中断
 
 void ARMRun(struct ARMCore* cpu);		//单步运行
-void ARMRunLoop(struct ARMCore* cpu);	//循环运行
+void ARMRunLoop(struct ARMCore* cpu);		//循环运行
 
 #endif
