@@ -302,7 +302,7 @@ static const char* _armAccessTypeStrings[] = {
 	""
 };
 
-int ARMDisassemble(struct ARMInstructionInfo* info, uint32_t pc, char* buffer, int blen) {	//反汇编解码指令
+int ARMDisassemble(struct ARMInstructionInfo* info, uint32_t pc, char* buffer, int blen) {	//反汇编解码
 	const char* mnemonic = _armMnemonicStrings[info->mnemonic];
 	int written;
 	int total = 0;
