@@ -81,7 +81,7 @@ static int _decodeRegisterList(int list, char* buffer, int blen) {
 	int start = -1;
 	int end = -1;
 	int written;
-	for (i = 0; i <= ARM_PC; ++i) {
+	for (i = 0; i <= ARM_PC; ++i) {		//从15号寄存器开始解码
 		if (list & 1) {
 			if (start < 0) {
 				start = i;

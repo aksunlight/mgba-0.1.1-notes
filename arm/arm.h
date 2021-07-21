@@ -199,12 +199,12 @@ struct ARMCore {		//ARM核心
 	int32_t bankedRegisters[6][7];	//备份寄存器组，存储不同工作模式下每种工作模式的bankedRegisters，
 	int32_t bankedSPSRs[6];		//SPSR寄存器，存储不同工作模式每种工作模式下的SPSR
 
-	int32_t shifterOperand;		//工作模式转换？
-	int32_t shifterCarryOut;	//执行某一工作模式？
+	int32_t shifterOperand;		//数据计算类指令的第二操作数的值
+	int32_t shifterCarryOut;	//数据计算类指令的执行某一工作模式？
 
 	uint32_t prefetch;			//预取指令
-	enum ExecutionMode executionMode;	//当前工作状态？
-	enum PrivilegeMode privilegeMode;	//当前工作模式？
+	enum ExecutionMode executionMode;	//当前工作状态
+	enum PrivilegeMode privilegeMode;	//当前工作模式
 
 	struct ARMMemory memory;		//内存	
 	struct ARMInterruptHandler irqh;	//中断句柄

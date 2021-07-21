@@ -93,13 +93,13 @@ enum ARMShifterOperation {		//ARM移位操作，LSL逻辑左移 LSR逻辑右移 
 	ARM_SHIFT_RRX
 };
 
-union ARMOperand {		//ARM操作数
+union ARMOperand {		//指令第二操作数Op2？第一操作数+目的操作数+第二操作数？第一操作数+第二操作数？
 	struct {
-		uint8_t reg;	//第一操作数寄存器
-		uint8_t shifterOp;		//目标操作数寄存器
-		union {			//第二操作数
-			uint8_t shifterReg;
-			uint8_t shifterImm;
+		uint8_t reg;	//1st operand register
+		uint8_t shifterOp;	//位移模式，从ARMShifterOperation中取值
+		union {
+			uint8_t shifterReg;	//operand 2 is a register
+			uint8_t shifterImm;	//operand 2 is an immediate value
 		};
 	};
 	int32_t immediate;
@@ -111,21 +111,21 @@ enum ARMMemoryAccessType {		//内存访问类型
 	ARM_ACCESS_SIGNED_HALFWORD = 10,	//有符号半字
 	ARM_ACCESS_BYTE = 1,	//字节
 	ARM_ACCESS_SIGNED_BYTE = 9,		//有符号字节
-	ARM_ACCESS_TRANSLATED_WORD = 20,	
+	ARM_ACCESS_TRANSLATED_WORD = 20,
 	ARM_ACCESS_TRANSLATED_BYTE = 17
 };
 
-enum ARMBranchType {		//ARM分支类型
-	ARM_BRANCH_NONE = 0,
-	ARM_BRANCH = 1,
-	ARM_BRANCH_INDIRECT = 2,
-	ARM_BRANCH_LINKED = 4
+enum ARMBranchType {		//ARM分支类型，跳转的类型
+	ARM_BRANCH_NONE = 0,	//不跳转
+	ARM_BRANCH = 1,			//普通跳转
+	ARM_BRANCH_INDIRECT = 2,	//间接跳转？
+	ARM_BRANCH_LINKED = 4		//连接跳转？
 };
 
 struct ARMMemoryAccess {	//ARM内存访问
 	uint8_t baseReg;	//基址
-	uint8_t width;
-	uint16_t format;
+	uint8_t width;		//大小
+	uint16_t format;	//形式
 	union ARMOperand offset;	//偏移量
 };
 

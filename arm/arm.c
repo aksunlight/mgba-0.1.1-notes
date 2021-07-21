@@ -194,15 +194,15 @@ void ARMRaiseSWI(struct ARMCore* cpu) {
 
 /*
 ARM7TDMI芯片 -> ARMv4T指令集
-某钟ARM32位指令格式（Data processing/PSR Transfer）：
+ARM32位指令格式（Data processing算数运算/PSR Transfer程序状态寄存器设置）：
 31-28	27-25	24-21	20  	19-16	15-12	11-0
-cond	001		opcode	S		Rn		Rd		Operand2 
+cond	00I		opcode	S		Rn		Rd		Operand2 
 cond：执行条件，如EQ，NE等，To execute this only if the zero flag is set:ADDEQ r0,r1,r2(If zero flag set then r0 = r1 + r2)
 opcode：操作码，如LDR，STR等
 S：是否影响CPSR寄存器条件标志位的值，主要用于算术运算结果设置（等于0，为负数等），To add two numbers and set the condition flags:ADDS r0,r1,r2(r0 = r1 + r2 and set flags)
 Rn：第一个操作数的寄存器编码
 Rd：目标寄存器编码
-shifter_operand：	第二个操作数，它可以是立即数An immediate value，可以是按值移位的寄存器A register shifted by value，也可以是按寄存器移位的寄存器
+Operand2：第二个操作数，它可以是立即数An immediate value，可以是按值移位的寄存器A register shifted by value，也可以是按寄存器移位的寄存器
 */
 
 //ARM状态的指令执行步骤
