@@ -93,16 +93,16 @@ enum ARMShifterOperation {		//ARM移位操作，LSL逻辑左移 LSR逻辑右移 
 	ARM_SHIFT_RRX
 };
 
-union ARMOperand {		//指令第二操作数Op2？第一操作数+目的操作数+第二操作数？第一操作数+第二操作数？
+union ARMOperand {		//指令第二操作数Op2
 	struct {
-		uint8_t reg;	//1st operand register
-		uint8_t shifterOp;	//位移模式，从ARMShifterOperation中取值
+		uint8_t reg;	//2st operand register，operand 2 is a register
+		uint8_t shifterOp;	//Shift域中的移位模式，从ARMShifterOperation中取值
 		union {
-			uint8_t shifterReg;	//operand 2 is a register
-			uint8_t shifterImm;	//operand 2 is an immediate value
+			uint8_t shifterReg;	//shift域中表示移位数的寄存器
+			uint8_t shifterImm;	//shift域中表示移位数的立即数
 		};
 	};
-	int32_t immediate;
+	int32_t immediate;	//2st operand immediate，operand 2 is a immediate
 };
 
 enum ARMMemoryAccessType {		//内存访问类型

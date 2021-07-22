@@ -316,6 +316,7 @@ static const ThumbDecoder _thumbDecoderTable[0x400] = {
 	DECLARE_THUMB_EMITTER_BLOCK(_ThumbDecode)
 };
 
+//解码thumb指令
 void ARMDecodeThumb(uint16_t opcode, struct ARMInstructionInfo* info) {
 	info->execMode = MODE_THUMB;
 	info->opcode = opcode;

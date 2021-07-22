@@ -185,7 +185,7 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 	}
 }
 
-// Instruction definitions
+// Instruction definitions，指令定义
 // Beware pre-processor antics
 
 #define NO_EXTEND64(V) (uint64_t)(uint32_t) (V)

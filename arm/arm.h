@@ -217,7 +217,7 @@ struct ARMCore {		//ARM核心
 
 void ARMInit(struct ARMCore* cpu);		//初始化
 void ARMDeinit(struct ARMCore* cpu);	//另一种初始化方式
-void ARMSetComponents(struct ARMCore* cpu, struct ARMComponent* master, int extra, struct ARMComponent** extras);	//设置组分
+void ARMSetComponents(struct ARMCore* cpu, struct ARMComponent* master, int extra, struct ARMComponent** extras);	//设置进程？
 
 void ARMReset(struct ARMCore* cpu);		//重置
 void ARMSetPrivilegeMode(struct ARMCore*, enum PrivilegeMode);	//设置工作模式

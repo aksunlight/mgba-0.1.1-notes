@@ -370,7 +370,7 @@ DEFINE_DECODER_ARM(BX, BX,
 
 // End branch definitions
 
-// Begin coprocessor definitions
+// Begin coprocessor definitions，开始协处理器定义
 
 DEFINE_DECODER_ARM(CDP, ILL, info->operandFormat = ARM_OPERAND_NONE;)
 DEFINE_DECODER_ARM(LDC, ILL, info->operandFormat = ARM_OPERAND_NONE;)
@@ -378,7 +378,7 @@ DEFINE_DECODER_ARM(STC, ILL, info->operandFormat = ARM_OPERAND_NONE;)
 DEFINE_DECODER_ARM(MCR, ILL, info->operandFormat = ARM_OPERAND_NONE;)
 DEFINE_DECODER_ARM(MRC, ILL, info->operandFormat = ARM_OPERAND_NONE;)
 
-// Begin miscellaneous definitions
+// Begin miscellaneous definitions，开始其他定义
 
 DEFINE_DECODER_ARM(BKPT, BKPT, info->operandFormat = ARM_OPERAND_NONE;) // Not strictly in ARMv4T, but here for convenience
 DEFINE_DECODER_ARM(ILL, ILL, info->operandFormat = ARM_OPERAND_NONE;) // Illegal opcode
@@ -445,6 +445,7 @@ static const ARMDecoder _armDecoderTable[0x1000] = {
 	DECLARE_ARM_EMITTER_BLOCK(_ARMDecode)
 };
 
+//解码ARM指令
 void ARMDecodeARM(uint32_t opcode, struct ARMInstructionInfo* info) {
 	info->execMode = MODE_ARM;
 	info->opcode = opcode;

@@ -8,7 +8,7 @@
 #include "isa-inlines.h"
 #include "emitter-thumb.h"
 
-// Instruction definitions
+// Instruction definitions，指令定义
 // Beware pre-processor insanity
 
 #define THUMB_ADDITION_S(M, N, D) \

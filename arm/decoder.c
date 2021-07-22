@@ -17,12 +17,18 @@
 	buffer += AMOUNT; \
 	blen -= AMOUNT;
 
-static int _decodeRegister(int reg, char* buffer, int blen);	//解码寄存器
-static int _decodeRegisterList(int list, char* buffer, int blen);	//解码寄存器组
-static int _decodePCRelative(uint32_t address, uint32_t pc, char* buffer, int blen);	//解码PC寄存器
-static int _decodeMemory(struct ARMMemoryAccess memory, int pc, char* buffer, int blen);	//解码内存
-static int _decodeShift(union ARMOperand operand, bool reg, char* buffer, int blen);		//解码偏移量
+//解码寄存器
+static int _decodeRegister(int reg, char* buffer, int blen);
+//解码寄存器组
+static int _decodeRegisterList(int list, char* buffer, int blen);	
+//解码PC寄存器
+static int _decodePCRelative(uint32_t address, uint32_t pc, char* buffer, int blen);	
+//解码内存
+static int _decodeMemory(struct ARMMemoryAccess memory, int pc, char* buffer, int blen);	
+//解码偏移量
+static int _decodeShift(union ARMOperand operand, bool reg, char* buffer, int blen);		
 
+//条件域数组
 static const char* _armConditions[] = {
 	"eq",
 	"ne",
@@ -220,46 +226,47 @@ static int _decodeShift(union ARMOperand op, bool reg, char* buffer, int blen) {
 	return total;
 }
 
+//指令描述符数组
 static const char* _armMnemonicStrings[] = {
 	"ill",
-	"adc",
-	"add",
-	"and",
+	"adc",		//data process instruction
+	"add",		//data process instruction
+	"and",		//data process instruction
 	"asr",
-	"b",
-	"bic",
+	"b",		//Branch instruction
+	"bic",		//data process instruction
 	"bkpt",
-	"bl",
+	"bl",		//Branch with Link instruction
 	"blh",
 	"bx",
-	"cmn",
-	"cmp",
-	"eor",
+	"cmn",		//data process instruction
+	"cmp",		//data process instruction
+	"eor",		//data process instruction
 	"ldm",
 	"ldr",
 	"lsl",
 	"lsr",
 	"mla",
-	"mov",
+	"mov",		//data process instruction
 	"mrs",
 	"msr",
 	"mul",
-	"mvn",
+	"mvn",		//data process instruction
 	"neg",
-	"orr",
+	"orr",		//data process instruction
 	"ror",
-	"rsb",
-	"rsc",
-	"sbc",
+	"rsb",		//data process instruction
+	"rsc",		//data process instruction
+	"sbc",		//data process instruction
 	"smlal",
 	"smull",
 	"stm",
 	"str",
-	"sub",
+	"sub",		//data process instruction
 	"swi",
 	"swp",
-	"teq",
-	"tst",
+	"teq",		//data process instruction
+	"tst",		//data process instruction
 	"umlal",
 	"umull",
 
@@ -302,7 +309,8 @@ static const char* _armAccessTypeStrings[] = {
 	""
 };
 
-int ARMDisassemble(struct ARMInstructionInfo* info, uint32_t pc, char* buffer, int blen) {	//反汇编解码
+//反汇编解码
+int ARMDisassemble(struct ARMInstructionInfo* info, uint32_t pc, char* buffer, int blen) {	
 	const char* mnemonic = _armMnemonicStrings[info->mnemonic];
 	int written;
 	int total = 0;
