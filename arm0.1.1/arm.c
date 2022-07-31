@@ -8,11 +8,10 @@
 #include "isa-arm.h"
 #include "isa-inlines.h"
 #include "isa-thumb.h"
-
+##
 static inline enum RegisterBank _ARMSelectBank(enum PrivilegeMode);
 
 //设置CPU工作模式，并且改变R8-R14和spsr，同时要保存旧的R8-R14和spsr
-
 void ARMSetPrivilegeMode(struct ARMCore* cpu, enum PrivilegeMode mode) {
 	if (mode == cpu->privilegeMode) {
 		// Not switching modes after all
