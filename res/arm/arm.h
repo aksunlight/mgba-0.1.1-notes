@@ -9,14 +9,60 @@
 #include "util/common.h"
 
 /*
-ARM7TDMI芯片 -> ARMv4T指令集
-在用户模式下ARM可见的寄存器有16个32位的寄存器（R0到R15）和一个当前程序状态寄存器CPSR
-其中R15是程序计数器PC，R14用于存储子程序的返回地址LR，R13用于存储堆栈栈顶SP
+ARM7TDMI（处理器内核/处理器/CPU） -> ARMv4T（体系结构版本/架构）
+
+ARM7TDMI支持2种工作状态（支持32位指令的ARM状态和支持16位指令的THUMB状态）
+
+ARM7TDMI支持7种工作模式，它门分别为：用户模式（user）、系统模式（sys）、管理/访管模式（svc）
+快速中断模式（fiq）、外部中断模式（irq）、数据访问终止模式（abt）、未定义指令中止模式（und）
+除了user和system模式外，其它5种工作模式都是异常模式（比如Supervisor call模式是软件中断，FIQ和IRQ是硬件中断，Abort和Undef模式是异常）
+
+ARMv6架构以前的处理器有37个物理寄存器，包括31个通用32位寄存器和、1个当前程序状态寄存器CPSR、5个保存程序状态寄存器SPSR，它门都是32位寄存器
+ARM状态下，R14一般作为子程序链接寄存器（LR）用存储子程序调用后的返回地址，R13一般作为堆栈指针寄存器（SP）指向堆栈栈顶
+
+                  ARM状态下的通用寄存器和程序计数器
+System & User    FIQ    Supervisor    Abort      IRQ     Undefined
+      R0         R0         R0         R0        R0         R0
+      R1         R1         R1         R1        R1         R1
+      R2         R2         R2         R2        R2         R2
+      R3         R3         R3         R3        R3         R3
+      R4         R4         R4         R4        R4         R4
+      R5         R5         R5         R5        R5         R5
+      R6         R6         R6         R6        R6         R6
+      R7         R7         R7         R7        R7         R7
+      R8        *R8_fiq     R8         R8        R8         R8
+      R9        *R9_fiq     R9         R9        R9         R9
+     R10        *R10_fiq    R10        R10       R10        R10
+     R11        *R11_fiq    R11        R11       R11        R11
+     R12        *R12_fiq    R12        R12       R12        R12
+     R13        *R13_fiq   *R13_svc   *R13_abt  *R13_irq   *R13_und
+     R14        *R14_fiq   *R14_svc   *R14_abt  *R14_irq   *R14_und
+     R15(PC)     R15(PC)    R15(PC)    R15(PC)   R15(PC)    R15(PC)
+                      ARM状态下的程序状态寄存器	
+     CPSR        CPSR       CPSR       CPSR      CPSR       CPSR
+                *SPSR_fiq  *SPSR_svc  *SPSR_abt *SPSR_irq  *SPSR_und
+
+                  THUMB状态下的通用寄存器和程序计数器
+System & User    FIQ    Supervisor    Abort      IRQ     Undefined
+      R0         R0         R0         R0        R0         R0
+      R1         R1         R1         R1        R1         R1
+      R2         R2         R2         R2        R2         R2
+      R3         R3         R3         R3        R3         R3
+      R4         R4         R4         R4        R4         R4
+      R5         R5         R5         R5        R5         R5
+      R6         R6         R6         R6        R6         R6
+      R7         R7         R7         R7        R7         R7
+      SP        *SP_fiq    *SP_svc    *SP_abt   *SP_irq    *SP_und
+      LR        *LR_fiq    *LR_svc    *LR_abt   *LR_irq    *LR_und
+      PC         PC         PC         PC        PC         PC
+                      THUMB状态下的程序状态寄存器	
+     CPSR        CPSR       CPSR       CPSR      CPSR       CPSR
+                *SPSR_fiq  *SPSR_svc  *SPSR_abt *SPSR_irq  *SPSR_und
 */
 enum {
-	ARM_SP = 13,	//SP: 栈指针寄存器，13号寄存器
-	ARM_LR = 14,	//LR: 链接寄存器，存储于程序返回地址，14号寄存器
-	ARM_PC = 15	//PC: 程序计数器，15号寄存器，因为指令是按字（4字节）对齐，故PC寄存器第0位和第1位为0
+	ARM_SP = 13,    //SP: 栈指针寄存器，13号寄存器
+	ARM_LR = 14,    //LR: 链接寄存器，存储子程序调用后的返回地址，14号寄存器
+	ARM_PC = 15     //PC: 程序计数器，15号寄存器，因为指令是按字（4字节）对齐，故PC寄存器第0位和第1位为0
 };
 
 /*
@@ -30,7 +76,7 @@ enum ExecutionMode {
 };
 
 /*
-ARM芯片有USER、FIQ、IRQ、SVC、ABT、SYS七种工作模式（新型芯片有Secure Monitor模式），除了USER模式其它6种处理器模式称为特权模式
+ARM芯片有USER、FIQ、IRQ、SVC、ABT、SYS、UND七种工作模式，除了USER模式其它6种处理器模式称为特权模式
 特权模式下，程序可以访问所有的系统资源，也可以任意地进行处理器模式的切换，特权模式中，除系统模式外，其他5种模式又称为异常模式
 大多数的用户程序运行在用户模式下，此时，应用程序不能够访问一些受操作系统保护的系统资源，应用程序也不能直接进行处理器模式的切换
 用户模式下，当需要进行处理器模式切换时，应用程序可以产生异常处理，在异常处理中进行处理器模式的切换
@@ -38,13 +84,13 @@ ARM指令集中提供了两条产生异常的指令，通过这两条指令可�
 超级用户模式是CPU上电后默认模式，因此在该模式下主要用来做系统的初始化，软中断处理也在该模式下，当用户模式下的用户程序请求使用硬件资源时通过软件中断进入该模式
 */
 enum PrivilegeMode {
-	MODE_USER = 0x10,			//用户模式(PSR低5位为10000)，正常程序运行模式
-	MODE_FIQ = 0x11,			//快速中断模式(PSR低5位为10001)，快速中断处理，用于高速数据传输
-	MODE_IRQ = 0x12,			//外部中断模式(PSR低5位为10010)，普通中断处理
-	MODE_SUPERVISOR = 0x13,			//超级用户模式(PSR低5位为10011)，提供操作系统使用的一种保护模式
-	MODE_ABORT = 0x17,			//数据访问终止模式(PSR低5位为10111)，当数据或指令预取终止时进入该模式，用于虚拟存储和存储保护
-	MODE_UNDEFINED = 0x1B,			//未定义指令终止模式(PSR低5位为11011)，当未定义的指令执行时进入该模式，用于支持通过软件仿真硬件的协处理
-	MODE_SYSTEM = 0x1F			//系统模式(PSR低5位为11111)，用于运行特权级的操作系统任务
+	MODE_USER = 0x10,           //用户模式(PSR低5位为10000)，正常程序运行模式
+	MODE_FIQ = 0x11,            //快速中断模式(PSR低5位为10001)，快速中断处理，用于高速数据传输
+	MODE_IRQ = 0x12,            //外部中断模式(PSR低5位为10010)，普通中断处理
+	MODE_SUPERVISOR = 0x13,     //超级用户模式(PSR低5位为10011)，提供操作系统使用的一种保护模式
+	MODE_ABORT = 0x17,          //数据访问终止模式(PSR低5位为10111)，当数据或指令预取终止时进入该模式，用于虚拟存储和存储保护
+	MODE_UNDEFINED = 0x1B,      //未定义指令终止模式(PSR低5位为11011)，当未定义的指令执行时进入该模式，用于支持通过软件仿真硬件的协处理
+	MODE_SYSTEM = 0x1F          //系统模式(PSR低5位为11111)，用于运行特权级的操作系统任务
 };
 
 /*
@@ -72,16 +118,9 @@ enum ExecutionVector {			//异常向量表
 
 /*
 备份寄存器组
-简单来说就是R8-R14寄存器对应若干个不同的物理寄存器，不同工作模式下使用不同物理寄存器
-对于备份寄存器R8～R12来说，每个寄存器对应两个不同的物理寄存器
-例如，当使用快速中断模式下的寄存器时，寄存器R8和寄存器R9分别记作R8_fiq、R9_fiq
-当使用用户模式下的寄存器时，寄存器R8和寄存器R9分别记作R8_usr、R9_usr等
-对于备份寄存器R13和R14来说，每个寄存器对应6个不同的物理寄存器
-其中的一个是用户模式和系统模式共用的；另外的5个对应于其他5种处理器模式
-参考：https://developer.arm.com/documentation/ddi0229/c/BGBJCJAE
 */
 enum RegisterBank {			
-	BANK_NONE = 0,		//对应user mode和sys mode下的备份寄存器组，这两种模式间的切换并不需要改变备份寄存器组
+	BANK_NONE = 0,
 	BANK_FIQ = 1,
 	BANK_IRQ = 2,
 	BANK_SUPERVISOR = 3,
