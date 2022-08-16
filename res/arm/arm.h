@@ -84,7 +84,7 @@ ARM芯片有USER、FIQ、IRQ、SVC、ABT、SYS、UND七种工作模式，除了U
 ARM指令集中提供了两条产生异常的指令，通过这两条指令可以用软件的方法实现异常，其中一个就是软中断指令SWI
 访管模式是CPU上电后默认模式，因此在该模式下主要用来做系统的初始化，软中断处理也在该模式下，当用户模式下的用户程序请求使用硬件资源时通过软件中断进入该模式
 */
-enum PrivilegeMode {    //ARM状态(PSR第5位为1)下的特权模式设置
+enum PrivilegeMode {    //特权模式下PSR寄存器设置
 	MODE_USER = 0x10,           //用户模式(PSR低5位为10000)，正常程序运行模式
 	MODE_FIQ = 0x11,            //快速中断模式(PSR低5位为10001)，快速中断处理，用于高速数据传输
 	MODE_IRQ = 0x12,            //外部中断模式(PSR低5位为10010)，普通中断处理
@@ -131,7 +131,7 @@ enum ExecutionVector {          //异常向量表（中断向量表）
 };
 
 /*
-备份寄存器组，各个模式下使用的寄存器集合略有不同，有些模式会用到备份寄存器
+寄存器组，各个模式下使用的寄存器集合略有不同，有些模式会用到备份寄存器
 */
 enum RegisterBank {			
 	BANK_NONE = 0,
@@ -143,17 +143,22 @@ enum RegisterBank {
 };
 
 /*
-LSM（load/store multiple）是存储加载多个的意思，ARM的LSM指令包括STM、LDM等等
-ARM的多数据传输指令（STM、LDM）中，STM（store multiple register）是存储多个寄存器的意思，LDM（load multiple register）是加载多个寄存器的意思
-存储多个寄存器意思是将多个寄存器的数据存入某一地址空间，加载多个寄存器的意思是将某一连续地址空间的数据存入多个寄存器
+LSM（load/store multiple）是存储加载多个的意思，ARM的LSM指令包括批量数据存储STM和批量数据加载LDM
+批量数据存储STM是将多个寄存器的数据存入某一连续地址空间，批量数据加载LDM是将某一连续地址空间的数据存入多个寄存器
+LSM指令格式为：LDM(或STM) {条件}{类型} 基址寄存器{!}, 寄存器列表{^}
+{!}为可选后缀，若选用，则当数据传送完毕后将最后的地址写入基址寄存器，否则基址寄存器的内容不变
+
+LDM/STM指令都将按照低地址对应低寄存器、高地址对应高寄存器的方式进行数据存取
+STMIB r10, {r0, r1, r2, r3}    ;r0->[r10+4], r1->[r10+8], r2->[r10+12], r3->[r10+16]
+STMIB r10, {r3, r1, r0, r3}    ;r0->[r10+4], r1->[r10+8], r2->[r10+12], r3->[r10+16]
 */
-enum LSMDirection {
+enum LSMDirection {//加载向量表, 所有批量加载/存储指令必须指明加载类型
 	LSM_B = 1,
 	LSM_D = 2,
-	LSM_IA = 0,    //IA：increase after, 完成操作而后地址递增
-	LSM_IB = 1,    //IB：increase before, 地址先增而后完成操作
-	LSM_DA = 2,    //DA: decrease after, 完成操作而后地址递减
-	LSM_DB = 3     //DB: decrease before, 地址先减而后完成操作
+	LSM_IA = 0,    //IA：increase after, 每次传送后地址加4
+	LSM_IB = 1,    //IB：increase before, 每次传送前地址加4
+	LSM_DA = 2,    //DA: decrease after, 每次传送后地址减4
+	LSM_DB = 3     //DB: decrease before, 每次传送前地址减4
 };
 
 struct ARMCore;
@@ -164,7 +169,7 @@ ARM芯片的程序状态寄存器PSR（Program State Register）有两个
 另一个是保存的程序状态寄存器SPSR（Saved Program State Register）
 除user sys外的5种处理器模式都有一个专用的物理寄存器作为备份的程序状态寄存器
 当异常发生时, 这个物理寄存器负责保存CPSR当前程序状态寄存器的内容
-当异常处理程序返回时, 再将内容恢复到当前程序状态器中, 继续向下执行原来程序
+当异常处理程序返回时, 再将内容恢复到当前程序状态器中, 恢复现场后继续执行原来程序
 ARM CPSR寄存器格式（v4T架构）：
 N Z C V    Unsed    I F T Mode
 31-28      27-8     7 6 5 4-0
@@ -172,7 +177,7 @@ N Z C V    Unsed    I F T Mode
 union PSR {
 	struct {	//位域语法：type-specifier declarator(opt):constant-expression
 				//位域用法：冒号后指定域的宽度（以位为单位），位域在表达式中的使用方式与同样基类型使用变量的方式完全相同，无论位域中有多少位
-#if defined(__POWERPC__) || defined(__PPC__)
+#if defined(__POWERPC__) || defined(__PPC__)    //PowerPC架构，大端模式
 		//条件标志位(高4位 N,Z,C,V)
 		unsigned n : 1;		//第31位Negative：负数 ? 1 : 0
 		unsigned z : 1;		//第30位Zero：运算结果为0 ? 1 : 0
@@ -184,7 +189,7 @@ union PSR {
 		unsigned f : 1;		//第6位FIQ disable：f=1时FIQ禁止
 		enum ExecutionMode t : 1;	//第5位Thumb state bit：t=0时处于ARM状态否则处于Thumb状态
 		enum PrivilegeMode priv : 5;	//第0位到第4位Mode bit：这5位组合控制处理器处于什么工作模式
-#else
+#else	//小端模式
 		enum PrivilegeMode priv : 5;
 		enum ExecutionMode t : 1;
 		unsigned f : 1;
@@ -200,7 +205,7 @@ union PSR {
 	int32_t packed;
 };
 
-struct ARMMemory {		//ARM内存
+struct ARMMemory {    //ARM内存
 	int32_t (*load32)(struct ARMCore*, uint32_t address, int* cycleCounter);
 	int16_t (*load16)(struct ARMCore*, uint32_t address, int* cycleCounter);
 	uint16_t (*loadU16)(struct ARMCore*, uint32_t address, int* cycleCounter);
@@ -214,7 +219,7 @@ struct ARMMemory {		//ARM内存
 	uint32_t (*loadMultiple)(struct ARMCore*, uint32_t baseAddress, int mask, enum LSMDirection direction, int* cycleCounter);
 	uint32_t (*storeMultiple)(struct ARMCore*, uint32_t baseAddress, int mask, enum LSMDirection direction, int* cycleCounter);
 
-	uint32_t* activeRegion;		//当前指令/事件基地址
+	uint32_t* activeRegion;     //当前指令/事件基地址
 	uint32_t activeMask;		//当前指令/事件偏移地址
 	uint32_t activeSeqCycles32;	//序列周期数
 	uint32_t activeSeqCycles16;
