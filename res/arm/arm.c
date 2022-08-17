@@ -9,10 +9,12 @@
 #include "isa-inlines.h"
 #include "isa-thumb.h"
 
+//根据处理器工作模式选择寄存器组
 static inline enum RegisterBank _ARMSelectBank(enum PrivilegeMode);
 
-//设置CPU工作模式，并且改变R8-R14和spsr，同时要保存旧的R8-R14和spsr
+//设置处理器工作模式，如有需要改变寄存器配置
 void ARMSetPrivilegeMode(struct ARMCore* cpu, enum PrivilegeMode mode) {
+	//设置的模式和现在的模式相同，无动作
 	if (mode == cpu->privilegeMode) {
 		// Not switching modes after all
 		return;
@@ -20,9 +22,9 @@ void ARMSetPrivilegeMode(struct ARMCore* cpu, enum PrivilegeMode mode) {
 
 	enum RegisterBank newBank = _ARMSelectBank(mode);
 	enum RegisterBank oldBank = _ARMSelectBank(cpu->privilegeMode);
-	if (newBank != oldBank) {	//新老mode一定不同
+	if (newBank != oldBank) {
 		// Switch banked registers,  
-		if (mode == MODE_FIQ || cpu->privilegeMode == MODE_FIQ) {	//若新老mode有一个为FIQ，不可能同为FIQ
+		if (mode == MODE_FIQ || cpu->privilegeMode == MODE_FIQ) {
 			int oldFIQBank = oldBank == BANK_FIQ;
 			int newFIQBank = newBank == BANK_FIQ;
 			cpu->bankedRegisters[oldFIQBank][2] = cpu->gprs[8];
@@ -45,9 +47,11 @@ void ARMSetPrivilegeMode(struct ARMCore* cpu, enum PrivilegeMode mode) {
 		cpu->spsr.packed = cpu->bankedSPSRs[newBank];
 
 	}
+	//User和System模式互换，只需改变模式设置
 	cpu->privilegeMode = mode;
 }
 
+//根据处理器工作模式选择寄存器组
 static inline enum RegisterBank _ARMSelectBank(enum PrivilegeMode mode) {
 	switch (mode) {
 		case MODE_USER:

@@ -14,7 +14,7 @@ ARM7TDMI（处理器内核/处理器/CPU） -> ARMv4T（体系结构版本/架�
 ARM7TDMI支持2种工作状态（支持32位指令的ARM状态和支持16位指令的THUMB状态），使用三级流水线
 
 ARM7TDMI支持7种工作模式，它门分别为：用户模式（user）、系统模式（sys）、管理/访管模式（svc）
-快速中断模式（fiq）、外部中断模式（irq）、数据访问终止模式（abt）、未定义指令中止模式（und）
+快速中断模式（fiq）、外部中断模式（irq）、数据访问中止模式（abt）、未定义指令中止模式（und）
 除了user和system模式外，其它5种工作模式都是异常模式（比如Supervisor call模式是软件中断，FIQ和IRQ是硬件中断，Abort和Undef模式是异常）
 
 ARMv6架构以前的处理器有37个物理寄存器，包括31个通用32位寄存器和、1个当前程序状态寄存器CPSR、5个保存程序状态寄存器SPSR，它门都是32位寄存器
@@ -83,6 +83,10 @@ ARM芯片有USER、FIQ、IRQ、SVC、ABT、SYS、UND七种工作模式，除了U
 用户模式下，当需要进行处理器模式切换时，应用程序可以产生异常处理，在异常处理中进行处理器模式的切换
 ARM指令集中提供了两条产生异常的指令，通过这两条指令可以用软件的方法实现异常，其中一个就是软中断指令SWI
 访管模式是CPU上电后默认模式，因此在该模式下主要用来做系统的初始化，软中断处理也在该模式下，当用户模式下的用户程序请求使用硬件资源时通过软件中断进入该模式
+
+ARM CPSR寄存器格式（v4T架构）：
+N Z C V    Unsed    I F T Mode
+31-28      27-8     7 6 5 4-0
 */
 enum PrivilegeMode {    //特权模式下PSR寄存器设置
 	MODE_USER = 0x10,           //用户模式(PSR低5位为10000)，正常程序运行模式
@@ -110,15 +114,28 @@ enum WordSize {
 异常是由于CPU内部在运行过程中引起的事件，比如指令预取错误、数据中止、未定义指令等，异常事件一般由操作系统接管
 注意：ARMv4T架构中每个异常对应异常向量表中的4个字节的空间，其中存放了一个跳转指令或者向PC指令赋值的数据访问指令，而不是异常处理程序入口地址
 
+异常向量表：
+地址            异常       进入模式        优先级（6最低）
+0x00000000     复位        管理模式            1
+0x00000004   未定义指令     未定义模式          6
+0x00000008    软件中断      管理模式            6
+0x0000000C   预取指令中止   中止模式            5
+0x00000010    数据中止      中止模式           2
+0x00000014     保留         保留              未使用
+0x00000018     IRQ         IRQ               4
+0x0000001C     FIQ         FIQ                3
+
 ARM处理器对异常的响应过程：
 1.保存处理器当前状态, 包括中断屏蔽位和各条件标志位, 它通过将CPSR的内容保存到将要执行的异常对应的SPSR寄存器中实现
-2.设置CPSR中的相应位, 包括：进入ARM状态、设置mode位使处理器进入相应异常执行模式、设置CPSR的I位, 禁止IRQ中断
+2.设置CPSR中的相应位, 包括：进入ARM状态、设置mode位使处理器进入相应异常执行模式、设置CPSR的I位, 禁止IRQ中断, 当进入IRQ模式时, 禁止FIQ中断
 3.将放回地址（pc-4）保存到寄存器lr_mode
 4.将pc设置成该异常的异常向量地址, 从而跳转到相应的异常处理程序处执行（通过异常向量地址找到异常向量表中对应的异常, 
 通过执行该异常对应的4个字节的空间中存储的指令跳转到真正的异常处理程序）
 
 ARM处理器从异常中返回过程：
-
+1.通用寄存器的恢复（使用前首先将其压栈保存，在退出异常服务程序前将其出栈恢复）
+2.恢复被中断的程序处理器的状态，即将SPSR_mode寄存器的内容复制到当前程序状态寄存器CPSR中
+3.返回到异常发生的下一条指令处执行，即将ir_mode寄存器的内容复制到程序计数器PC中
 */
 enum ExecutionVector {          //异常向量表（中断向量表）
 	BASE_RESET = 0x00000000,    //复位：处理器在工作时, 突然按下重启键, 就会触发该异常
@@ -152,7 +169,7 @@ LDM/STM指令都将按照低地址对应低寄存器、高地址对应高寄存�
 STMIB r10, {r0, r1, r2, r3}    ;r0->[r10+4], r1->[r10+8], r2->[r10+12], r3->[r10+16]
 STMIB r10, {r3, r1, r0, r3}    ;r0->[r10+4], r1->[r10+8], r2->[r10+12], r3->[r10+16]
 */
-enum LSMDirection {//加载向量表, 所有批量加载/存储指令必须指明加载类型
+enum LSMDirection {//加载向量表, 所有批量加载/存储指令必须指明加载类型, 即加载方向
 	LSM_B = 1,
 	LSM_D = 2,
 	LSM_IA = 0,    //IA：increase after, 每次传送后地址加4
@@ -206,22 +223,30 @@ union PSR {
 };
 
 struct ARMMemory {    //ARM内存
+	//对应字数据加载指令LDR
 	int32_t (*load32)(struct ARMCore*, uint32_t address, int* cycleCounter);
+	//对应半字数据加载指令LDRH, 目标寄存器高16位清零
 	int16_t (*load16)(struct ARMCore*, uint32_t address, int* cycleCounter);
-	uint16_t (*loadU16)(struct ARMCore*, uint32_t address, int* cycleCounter);
+	//对应字节数据加载指令LDRB, 目标寄存器高24位清零
 	int8_t (*load8)(struct ARMCore*, uint32_t address, int* cycleCounter);
+	//对应有符号半字数据加载指令LDRSH, 目标寄存器高16位做符号位扩展
+	uint16_t (*loadU16)(struct ARMCore*, uint32_t address, int* cycleCounter);
+	//对应有符号字节数据加载指令LDRSB, 目标寄存器高24位做符号位扩展
 	uint8_t (*loadU8)(struct ARMCore*, uint32_t address, int* cycleCounter);
-
+	//对应字数据存储指令STR
 	void (*store32)(struct ARMCore*, uint32_t address, int32_t value, int* cycleCounter);
+	//对应半字数据存储指令STRH
 	void (*store16)(struct ARMCore*, uint32_t address, int16_t value, int* cycleCounter);
+	//对应字节数据存储指令STRB
 	void (*store8)(struct ARMCore*, uint32_t address, int8_t value, int* cycleCounter);
-
+	//对应批量数据加载指令LDM, 
 	uint32_t (*loadMultiple)(struct ARMCore*, uint32_t baseAddress, int mask, enum LSMDirection direction, int* cycleCounter);
+	//对应批量数据存储指令STM
 	uint32_t (*storeMultiple)(struct ARMCore*, uint32_t baseAddress, int mask, enum LSMDirection direction, int* cycleCounter);
 
 	uint32_t* activeRegion;     //当前指令/事件基地址
-	uint32_t activeMask;		//当前指令/事件偏移地址
-	uint32_t activeSeqCycles32;	//序列周期数
+	uint32_t activeMask;        //当前指令/事件偏移地址
+	uint32_t activeSeqCycles32; //序列周期数
 	uint32_t activeSeqCycles16;
 	uint32_t activeNonseqCycles32;	//非序列周期数
 	uint32_t activeNonseqCycles16;
@@ -230,61 +255,61 @@ struct ARMMemory {    //ARM内存
 	void (*setActiveRegion)(struct ARMCore*, uint32_t address);		//设置当前指令/事件基地址
 };
 
-struct ARMInterruptHandler {	//ARM中断处理程序
-	void (*reset)(struct ARMCore* cpu);		//重启复位
-	void (*processEvents)(struct ARMCore* cpu);	
+struct ARMInterruptHandler {    //ARM中断处理程序
+	void (*reset)(struct ARMCore* cpu);       //复位异常
+	void (*processEvents)(struct ARMCore* cpu);     //FIQ、IRQ硬件中断
 	void (*swi16)(struct ARMCore* cpu, int immediate);	//16位软中断
 	void (*swi32)(struct ARMCore* cpu, int immediate);	//32位软中断
-	void (*hitIllegal)(struct ARMCore* cpu, uint32_t opcode);	//非法指令？
-	void (*readCPSR)(struct ARMCore* cpu);	//读当前程序状态寄存器	
+	void (*hitIllegal)(struct ARMCore* cpu, uint32_t opcode);    //未定义指令异常
+	void (*readCPSR)(struct ARMCore* cpu);    //读当前程序状态寄存器	
 
-	void (*hitStub)(struct ARMCore* cpu, uint32_t opcode);
+	void (*hitStub)(struct ARMCore* cpu, uint32_t opcode);    //指令预取中止异常、数据中止异常
 };
 
-struct ARMComponent {		//ARM进程？
+struct ARMComponent {        //ARM进程？
 	uint32_t id;
 	void (*init)(struct ARMCore* cpu, struct ARMComponent* component);
 	void (*deinit)(struct ARMComponent* component);
 };
 
-struct ARMCore {		//ARM核心
-	int32_t gprs[16];	//当前16个32位的寄存器（R0到R15）
-	union PSR cpsr;		//当前程序状态寄存器
-	union PSR spsr;		//保存的程序状态寄存器
+struct ARMCore {        //ARM核心
+	int32_t gprs[16];   //当前16个32位的寄存器（R0到R15）
+	union PSR cpsr;     //当前程序状态寄存器
+	union PSR spsr;     //保存的程序状态寄存器
 
-	int32_t cycles;		//时钟周期数？指令周期数？机器周期数？
-	int32_t nextEvent;	//直到完成下一条指令/事件的所有时钟周期数？指令周期数？机器周期数？
-	int halted;		//停止
+	int32_t cycles;     //时钟周期数？指令周期数？机器周期数？
+	int32_t nextEvent;  //直到完成下一条指令/事件的所有时钟周期数？指令周期数？机器周期数？
+	int halted;    //停止
 
-	int32_t bankedRegisters[6][7];	//备份寄存器组，存储不同工作模式下每种工作模式的bankedRegisters，
-	int32_t bankedSPSRs[6];		//SPSR寄存器，存储不同工作模式每种工作模式下的SPSR
+	int32_t bankedRegisters[6][7];  //备份寄存器组，存储不同工作模式下每种工作模式的bankedRegisters，
+	int32_t bankedSPSRs[6];     //SPSR寄存器组，存储不同工作模式下每种工作模式下的SPSR
 
-	int32_t shifterOperand;		//数据计算类指令的第二操作数的值
-	int32_t shifterCarryOut;	//数据计算类指令的执行某一工作模式？
+	int32_t shifterOperand;     //数据计算类指令的第二操作数的值
+	int32_t shifterCarryOut;    //数据计算类指令的执行某一工作模式？
 
-	uint32_t prefetch;			//预取指令
-	enum ExecutionMode executionMode;	//当前工作状态
-	enum PrivilegeMode privilegeMode;	//当前工作模式
+	uint32_t prefetch;              //预取指令
+	enum ExecutionMode executionMode;   //当前工作状态
+	enum PrivilegeMode privilegeMode;   //当前工作模式
 
-	struct ARMMemory memory;		//内存	
-	struct ARMInterruptHandler irqh;	//中断句柄
+	struct ARMMemory memory;            //内存	
+	struct ARMInterruptHandler irqh;    //中断句柄
 
-	struct ARMComponent* master;	//主进程？
+	struct ARMComponent* master;    //主进程？
 
-	int numComponents;		//其他进程？
+	int numComponents;      //其他进程？
 	struct ARMComponent** components;	
 };
 
-void ARMInit(struct ARMCore* cpu);		//初始化
-void ARMDeinit(struct ARMCore* cpu);	//另一种初始化方式
+void ARMInit(struct ARMCore* cpu);      //初始化
+void ARMDeinit(struct ARMCore* cpu);    //另一种初始化方式
 void ARMSetComponents(struct ARMCore* cpu, struct ARMComponent* master, int extra, struct ARMComponent** extras);	//设置进程？
 
-void ARMReset(struct ARMCore* cpu);		//重置
-void ARMSetPrivilegeMode(struct ARMCore*, enum PrivilegeMode);	//设置工作模式
-void ARMRaiseIRQ(struct ARMCore*);		//拉起普通中断
-void ARMRaiseSWI(struct ARMCore*);		//拉起软中断
+void ARMReset(struct ARMCore* cpu);     //重置
+void ARMSetPrivilegeMode(struct ARMCore*, enum PrivilegeMode);  //设置工作模式
+void ARMRaiseIRQ(struct ARMCore*);      //拉起普通中断
+void ARMRaiseSWI(struct ARMCore*);      //拉起软中断
 
-void ARMRun(struct ARMCore* cpu);		//单步运行
-void ARMRunLoop(struct ARMCore* cpu);	//循环运行
+void ARMRun(struct ARMCore* cpu);       //单步运行
+void ARMRunLoop(struct ARMCore* cpu);   //循环运行
 
 #endif
