@@ -45,8 +45,8 @@ void ARMSetPrivilegeMode(struct ARMCore* cpu, enum PrivilegeMode mode) {
 
 		cpu->bankedSPSRs[oldBank] = cpu->spsr.packed;
 		cpu->spsr.packed = cpu->bankedSPSRs[newBank];
-
 	}
+
 	//User和System模式互换，只需改变模式设置
 	cpu->privilegeMode = mode;
 }
