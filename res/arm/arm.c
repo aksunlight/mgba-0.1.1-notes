@@ -23,7 +23,7 @@ void ARMSetPrivilegeMode(struct ARMCore* cpu, enum PrivilegeMode mode) {
 	enum RegisterBank newBank = _ARMSelectBank(mode);
 	enum RegisterBank oldBank = _ARMSelectBank(cpu->privilegeMode);
 	if (newBank != oldBank) {
-		// Switch banked registers,  
+		// Switch banked registers
 		if (mode == MODE_FIQ || cpu->privilegeMode == MODE_FIQ) {
 			int oldFIQBank = oldBank == BANK_FIQ;
 			int newFIQBank = newBank == BANK_FIQ;
@@ -46,8 +46,7 @@ void ARMSetPrivilegeMode(struct ARMCore* cpu, enum PrivilegeMode mode) {
 		cpu->bankedSPSRs[oldBank] = cpu->spsr.packed;
 		cpu->spsr.packed = cpu->bankedSPSRs[newBank];
 	}
-
-	//User和System模式互换，只需改变模式设置
+	//最后一步改变模式设置
 	cpu->privilegeMode = mode;
 }
 
@@ -103,11 +102,7 @@ void ARMSetComponents(struct ARMCore* cpu, struct ARMComponent* master, int extr
 	cpu->components = extras;
 }
 
-/*
-CPU重置，16个寄存器设为0，各个模式下的R8-R14和spsr置为0
-工作模式设为sys，并设置相应cpsr，spsr设为0
-工作状态设为ARM状态，写程序计数器，最后拉起重置中断
-*/
+//CPU重置，工作模式进入SYS模式
 void ARMReset(struct ARMCore* cpu) {
 	int i;
 	for (i = 0; i < 16; ++i) {
