@@ -19,7 +19,6 @@ void ARMSetPrivilegeMode(struct ARMCore* cpu, enum PrivilegeMode mode) {
 		// Not switching modes after all
 		return;
 	}
-
 	enum RegisterBank newBank = _ARMSelectBank(mode);
 	enum RegisterBank oldBank = _ARMSelectBank(cpu->privilegeMode);
 	if (newBank != oldBank) {
@@ -204,7 +203,7 @@ Rd：目标寄存器编码
 Operand2：第二个操作数，它可以是立即数An immediate value，可以是按值移位的寄存器A register shifted by value，也可以是按寄存器移位的寄存器
 */
 
-//ARM状态的指令执行步骤
+//ARM处理器指令执行步骤
 static inline void ARMStep(struct ARMCore* cpu) {
 	uint32_t opcode = cpu->prefetch;
 	LOAD_32(cpu->prefetch, cpu->gprs[ARM_PC] & cpu->memory.activeMask, cpu->memory.activeRegion);

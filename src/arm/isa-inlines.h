@@ -55,16 +55,21 @@ V：溢出，改变标志位的最后的ALU操作产生到符号位的溢出
 //忽略，无条件执行
 #define ARM_COND_AL 1
 
-//数据符号位，即最高位
+//取数据符号位，即最高位
 #define ARM_SIGN(I) ((I) >> 31)
+//循环移位操作
 #define ARM_ROR(I, ROTATE) ((((uint32_t) (I)) >> ROTATE) | ((uint32_t) (I) << ((-ROTATE) & 31)))
 
-
+//进位
 #define ARM_CARRY_FROM(M, N, D) (((uint32_t) (M) >> 31) + ((uint32_t) (N) >> 31) > ((uint32_t) (D) >> 31))
+//借位
 #define ARM_BORROW_FROM(M, N, D) (((uint32_t) (M)) >= ((uint32_t) (N)))
+//加法溢出
 #define ARM_V_ADDITION(M, N, D) (!(ARM_SIGN((M) ^ (N))) && (ARM_SIGN((M) ^ (D))) && (ARM_SIGN((N) ^ (D))))
+//减法溢出
 #define ARM_V_SUBTRACTION(M, N, D) ((ARM_SIGN((M) ^ (N))) && (ARM_SIGN((M) ^ (D))))
 
+//计算乘法指令的时钟周期数
 #define ARM_WAIT_MUL(R) \
 	if ((R & 0xFFFFFF00) == 0xFFFFFF00 || !(R & 0xFFFFFF00)) { \
 		currentCycles += 1; \
@@ -87,7 +92,7 @@ V：溢出，改变标志位的最后的ALU操作产生到符号位的溢出
 	cpu->gprs[ARM_PC] += WORD_SIZE_ARM; \
 	currentCycles += 2 + cpu->memory.activeUncachedCycles32 + cpu->memory.activeSeqCycles32;
 
-//写thumb状态所用的程序计数器
+//写THUMB状态所用的程序计数器
 #define THUMB_WRITE_PC \
 	cpu->gprs[ARM_PC] = (cpu->gprs[ARM_PC] & -WORD_SIZE_THUMB); \
 	cpu->memory.setActiveRegion(cpu, cpu->gprs[ARM_PC]); \
@@ -95,7 +100,7 @@ V：溢出，改变标志位的最后的ALU操作产生到符号位的溢出
 	cpu->gprs[ARM_PC] += WORD_SIZE_THUMB; \
 	currentCycles += 2 + cpu->memory.activeUncachedCycles16 + cpu->memory.activeSeqCycles16;
 
-//需要设置SPRS的工作模式
+//当前模式下是否有SPSR寄存器（SYSTEM和USER模式下没有SPSR寄存器）
 static inline int _ARMModeHasSPSR(enum PrivilegeMode mode) {
 	return mode != MODE_SYSTEM && mode != MODE_USER;
 }

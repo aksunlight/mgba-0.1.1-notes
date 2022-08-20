@@ -164,6 +164,7 @@ LSM（load/store multiple）是存储加载多个的意思，ARM的LSM指令包�
 批量数据存储STM是将多个寄存器的数据存入某一连续地址空间，批量数据加载LDM是将某一连续地址空间的数据存入多个寄存器
 LSM指令格式为：LDM(或STM) {条件}{类型} 基址寄存器{!}, 寄存器列表{^}
 {!}为可选后缀，若选用，则当数据传送完毕后将最后的地址写入基址寄存器，否则基址寄存器的内容不变
+{^}为可选后缀，当指令为LDM且寄存器列表中包含R15，选用该后缀则除了正常数据传送还将SPSR复制到CPSR
 
 LDM/STM指令都将按照低地址对应低寄存器、高地址对应高寄存器的方式进行数据存取
 STMIB r10, {r0, r1, r2, r3}    ;r0->[r10+4], r1->[r10+8], r2->[r10+12], r3->[r10+16]
@@ -184,12 +185,18 @@ struct ARMCore;
 ARM芯片的程序状态寄存器PSR（Program State Register）有两个
 一个是当前程序状态寄存器CPSR（Current Program State Register）
 另一个是保存的程序状态寄存器SPSR（Saved Program State Register）
-除user sys外的5种处理器模式都有一个专用的物理寄存器作为备份的程序状态寄存器
+除user、sys外的5种处理器模式都有一个专用的物理寄存器作为备份的程序状态寄存器
 当异常发生时, 这个物理寄存器负责保存CPSR当前程序状态寄存器的内容
 当异常处理程序返回时, 再将内容恢复到当前程序状态器中, 恢复现场后继续执行原来程序
 ARM CPSR寄存器格式（v4T架构）：
 N Z C V    Unsed    I F T Mode
 31-28      27-8     7 6 5 4-0
+
+CPSR寄存器条件标志位的意义如下：
+N：负数，改变标志位的最后的ALU操作产生负数结果（32位结果的最高位是1）
+Z：零，改变标志位的最后的ALU操作产生0结果（32位结果的每一位都是0）
+C：进位，改变标志位的最后的ALU操作产生到符号位的进位
+V：溢出，改变标志位的最后的ALU操作产生到符号位的溢出
 */
 union PSR {
 	struct {	//位域语法：type-specifier declarator(opt):constant-expression
@@ -277,15 +284,15 @@ struct ARMCore {        //ARM核心
 	union PSR cpsr;     //当前程序状态寄存器
 	union PSR spsr;     //保存的程序状态寄存器
 
-	int32_t cycles;     //时钟周期数？指令周期数？机器周期数？
+	int32_t cycles;     //时钟周期数
 	int32_t nextEvent;  //直到完成下一条指令/事件的所有时钟周期数？指令周期数？机器周期数？
 	int halted;    //停止
 
 	int32_t bankedRegisters[6][7];  //备份寄存器组，存储不同工作模式下每种工作模式的bankedRegisters，
 	int32_t bankedSPSRs[6];     //SPSR寄存器组，存储不同工作模式下每种工作模式下的SPSR
 
-	int32_t shifterOperand;     //数据计算类指令的第二操作数的值
-	int32_t shifterCarryOut;    //数据计算类指令的执行某一工作模式？
+	int32_t shifterOperand;     //源操作数寄存器
+	int32_t shifterCarryOut;    //进位/借位标志
 
 	uint32_t prefetch;              //预取指令
 	enum ExecutionMode executionMode;   //当前工作状态
