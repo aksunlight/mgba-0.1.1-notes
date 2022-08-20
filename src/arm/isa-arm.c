@@ -13,13 +13,17 @@
 #define PSR_PRIV_MASK   0x000000CF
 #define PSR_STATE_MASK  0x00000020
 
-// Addressing mode 1：Shifter operands for data processing instructions(数据处理指令中的移位操作数)
-// 数据处理指令中如果第二源操作数是一个寄存器则可以在其值送入ALU之前先对该寄存器的值进行移位操作成为移位操作数
-// 数据处理指令格式：Cond(31-28) 0 0 1 Opcode(24-21) S(20) Rn(19-16) Rd(15-12) Operand2(11-0)
-// 数据处理指令助记符的语法格式：<Opcode>{<Cond>}{S} <Rd>, <Rn>{, <Operand2>}
-
+/*
+Addressing mode 1：Shifter operands for data processing instructions(数据处理指令中的移位操作数)
+数据处理指令助记符的语法格式：<Opcode>{<Cond>}{S} <Rd>, <Rn>{, <Operand2>}
+数据处理指令格式：Cond(31-28) 0 0 1 Opcode(24-21) S(20) Rn(19-16) Rd(15-12) Operand2(11-0)
+数据处理指令中如果第二源操作数是一个寄存器则可以在其值送入ALU之前先对该寄存器的值进行移位操作(也可不移)
+数据处理指令中如果第二源操作数是一个立即数则将第0-7位作为立即数种子immed，第8-11位作为移位因子rot，送往ALU的数为immed循环右移2*rot位的结果
+*/
 static inline void _shiftLSL(struct ARMCore* cpu, uint32_t opcode) {
+	//第二源操作数使用的寄存器编号
 	int rm = opcode & 0x0000000F;
+	//寄存器的值逻辑左移immediate位
 	int immediate = (opcode & 0x00000F80) >> 7;
 	if (!immediate) {
 		cpu->shifterOperand = cpu->gprs[rm];
