@@ -34,6 +34,7 @@ Operand2       Immediate value          #32bit_Imm
                Rotate right             Rm ROR Rs
                Rotate right extended    Rm RRX
 */
+//逻辑左移
 static inline void _shiftLSL(struct ARMCore* cpu, uint32_t opcode) {
 	//第二源操作数使用的寄存器编号
 	int rm = opcode & 0x0000000F;
@@ -48,19 +49,16 @@ static inline void _shiftLSL(struct ARMCore* cpu, uint32_t opcode) {
 	}
 }
 
+//使用寄存器保存移位数的逻辑左移
 static inline void _shiftLSLR(struct ARMCore* cpu, uint32_t opcode) {
 	int rm = opcode & 0x0000000F;
 	int rs = (opcode >> 8) & 0x0000000F;
 	++cpu->cycles;
-	int shift = cpu->gprs[rs];
-	if (rs == ARM_PC) {
-		shift += 4;
-	}
-	shift &= 0xFF;
 	int32_t shiftVal = cpu->gprs[rm];
 	if (rm == ARM_PC) {
 		shiftVal += 4;
 	}
+	int shift = cpu->gprs[rs] & 0xFF;
 	if (!shift) {
 		cpu->shifterOperand = shiftVal;
 		cpu->shifterCarryOut = cpu->cpsr.c;
@@ -76,6 +74,7 @@ static inline void _shiftLSLR(struct ARMCore* cpu, uint32_t opcode) {
 	}
 }
 
+//逻辑右移
 static inline void _shiftLSR(struct ARMCore* cpu, uint32_t opcode) {
 	int rm = opcode & 0x0000000F;
 	int immediate = (opcode & 0x00000F80) >> 7;
@@ -88,19 +87,16 @@ static inline void _shiftLSR(struct ARMCore* cpu, uint32_t opcode) {
 	}
 }
 
+//使用寄存器保存移位数的逻辑右移
 static inline void _shiftLSRR(struct ARMCore* cpu, uint32_t opcode) {
 	int rm = opcode & 0x0000000F;
 	int rs = (opcode >> 8) & 0x0000000F;
 	++cpu->cycles;
-	int shift = cpu->gprs[rs];
-	if (rs == ARM_PC) {
-		shift += 4;
-	}
-	shift &= 0xFF;
 	uint32_t shiftVal = cpu->gprs[rm];
 	if (rm == ARM_PC) {
 		shiftVal += 4;
 	}
+	int shift = cpu->gprs[rs] & 0xFF;
 	if (!shift) {
 		cpu->shifterOperand = shiftVal;
 		cpu->shifterCarryOut = cpu->cpsr.c;
@@ -116,6 +112,7 @@ static inline void _shiftLSRR(struct ARMCore* cpu, uint32_t opcode) {
 	}
 }
 
+//算数右移
 static inline void _shiftASR(struct ARMCore* cpu, uint32_t opcode) {
 	int rm = opcode & 0x0000000F;
 	int immediate = (opcode & 0x00000F80) >> 7;
@@ -128,19 +125,16 @@ static inline void _shiftASR(struct ARMCore* cpu, uint32_t opcode) {
 	}
 }
 
+//使用寄存器保存移位数的算术右移
 static inline void _shiftASRR(struct ARMCore* cpu, uint32_t opcode) {
 	int rm = opcode & 0x0000000F;
 	int rs = (opcode >> 8) & 0x0000000F;
 	++cpu->cycles;
-	int shift = cpu->gprs[rs];
-	if (rs == ARM_PC) {
-		shift += 4;
-	}
-	shift &= 0xFF;
 	int shiftVal =  cpu->gprs[rm];
 	if (rm == ARM_PC) {
 		shiftVal += 4;
 	}
+	int shift = cpu->gprs[rs] & 0xFF;
 	if (!shift) {
 		cpu->shifterOperand = shiftVal;
 		cpu->shifterCarryOut = cpu->cpsr.c;
@@ -156,6 +150,7 @@ static inline void _shiftASRR(struct ARMCore* cpu, uint32_t opcode) {
 	}
 }
 
+//循环右移
 static inline void _shiftROR(struct ARMCore* cpu, uint32_t opcode) {
 	int rm = opcode & 0x0000000F;
 	int immediate = (opcode & 0x00000F80) >> 7;
@@ -169,19 +164,16 @@ static inline void _shiftROR(struct ARMCore* cpu, uint32_t opcode) {
 	}
 }
 
+//使用寄存器保存移位数的循环右移
 static inline void _shiftRORR(struct ARMCore* cpu, uint32_t opcode) {
 	int rm = opcode & 0x0000000F;
 	int rs = (opcode >> 8) & 0x0000000F;
 	++cpu->cycles;
-	int shift = cpu->gprs[rs];
-	if (rs == ARM_PC) {
-		shift += 4;
-	}
-	shift &= 0xFF;
-	int shiftVal =  cpu->gprs[rm];
+	int shiftVal = cpu->gprs[rm];
 	if (rm == ARM_PC) {
 		shiftVal += 4;
 	}
+	int shift = cpu->gprs[rs] & 0xFF;
 	int rotate = shift & 0x1F;
 	if (!shift) {
 		cpu->shifterOperand = shiftVal;
@@ -195,6 +187,7 @@ static inline void _shiftRORR(struct ARMCore* cpu, uint32_t opcode) {
 	}
 }
 
+//立即数循环右移
 static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 	int rotate = (opcode & 0x00000F00) >> 7;
 	int immediate = opcode & 0x000000FF;

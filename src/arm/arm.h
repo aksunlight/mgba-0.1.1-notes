@@ -292,7 +292,7 @@ struct ARMCore {        //ARM核心
 	int32_t bankedSPSRs[6];     //SPSR寄存器组，存储不同工作模式下每种工作模式下的SPSR
 
 	int32_t shifterOperand;     //数据处理指令第二源操作数的值
-	int32_t shifterCarryOut;    //数据处理指令带来的进位/借位
+	int32_t shifterCarryOut;    //数据处理指令带来的进位/借位?
 
 	uint32_t prefetch;              //预取指令
 	enum ExecutionMode executionMode;   //当前工作状态

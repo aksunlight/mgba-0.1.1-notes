@@ -8,7 +8,7 @@
 #define ARM_DECODER_H
 
 #include "arm.h"
-//operand 操作数	opcode 操作码	operation 操作
+//operand 操作数    opcode 操作码    operation 操作
 // Bit 0: a register is involved with this operand这个操作数涉及一个寄存器，意思就是操作数从寄存器中取
 // Bit 1: an immediate is invovled with this operand这个操作数涉及一个立即数，意思就是操作数就是立即数
 // Bit 2: a memory access is invovled with this operand这个操作数涉及一块内存访问，意思就是操作数从内存中取
@@ -65,7 +65,8 @@
 
 #define MEMORY_FORMAT_TO_DIRECTION(F) (((F) >> 8) & 0x3)
 
-enum ARMCondition {		//ARM指令执行条件
+//ARM指令执行条件
+enum ARMCondition {		
 	ARM_CONDITION_EQ = 0x0,
 	ARM_CONDITION_NE = 0x1,
 	ARM_CONDITION_CS = 0x2,
@@ -84,7 +85,8 @@ enum ARMCondition {		//ARM指令执行条件
 	ARM_CONDITION_NV = 0xF
 };
 
-enum ARMShifterOperation {		//ARM移位操作，LSL逻辑左移 LSR逻辑右移 ASL算术左移 ASR算术右移 ROR循环右移 RRX带扩展的循环右移
+//ARM移位操作，LSL逻辑左移 LSR逻辑右移 ASL算术左移 ASR算术右移 ROR循环右移 RRX带扩展的循环右移
+enum ARMShifterOperation {
 	ARM_SHIFT_NONE = 0,
 	ARM_SHIFT_LSL,
 	ARM_SHIFT_LSR,
@@ -93,7 +95,8 @@ enum ARMShifterOperation {		//ARM移位操作，LSL逻辑左移 LSR逻辑右移 
 	ARM_SHIFT_RRX
 };
 
-union ARMOperand {		//指令第二操作数Op2
+//指令第二操作数Op2
+union ARMOperand {
 	struct {
 		uint8_t reg;	//2st operand register，operand 2 is a register
 		uint8_t shifterOp;	//Shift域中的移位模式，从ARMShifterOperation中取值
