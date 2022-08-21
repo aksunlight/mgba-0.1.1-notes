@@ -57,12 +57,12 @@ V：溢出，改变标志位的最后的ALU操作产生到符号位的溢出
 
 //取数据符号位，即最高位
 #define ARM_SIGN(I) ((I) >> 31)
-//循环移位操作
+//循环右移操作
 #define ARM_ROR(I, ROTATE) ((((uint32_t) (I)) >> ROTATE) | ((uint32_t) (I) << ((-ROTATE) & 31)))
 
-//进位
+//加法运算带来进位
 #define ARM_CARRY_FROM(M, N, D) (((uint32_t) (M) >> 31) + ((uint32_t) (N) >> 31) > ((uint32_t) (D) >> 31))
-//借位
+//减法运算带来借位
 #define ARM_BORROW_FROM(M, N, D) (((uint32_t) (M)) >= ((uint32_t) (N)))
 //加法溢出
 #define ARM_V_ADDITION(M, N, D) (!(ARM_SIGN((M) ^ (N))) && (ARM_SIGN((M) ^ (D))) && (ARM_SIGN((N) ^ (D))))
