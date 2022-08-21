@@ -206,7 +206,7 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 //数据扩展成64位
 #define NO_EXTEND64(V) (uint64_t)(uint32_t) (V)
 
-//设置S标志的加法
+//设置了S标志的加法指令
 #define ARM_ADDITION_S(M, N, D) \
 	if (rd == ARM_PC && _ARMModeHasSPSR(cpu->cpsr.priv)) { \
 		cpu->cpsr = cpu->spsr; \
