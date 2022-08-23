@@ -198,11 +198,24 @@ ARM CPSR寄存器格式（v4T架构）：
 N Z C V    Unsed    I F T Mode
 31-28      27-8     7 6 5 4-0
 
-CPSR寄存器条件标志位的意义如下：
-N：负数，改变标志位的最后的ALU操作产生负数结果（32位结果的最高位是1）
-Z：零，改变标志位的最后的ALU操作产生0结果（32位结果的每一位都是0）
-C：进位，改变标志位的最后的ALU操作产生到符号位的进位
-V：溢出，改变标志位的最后的ALU操作产生到符号位的溢出
+CPSR寄存器条件标志位的意义如下：The N, Z, C, and V (Negative, Zero, Carry and oVerflow)
+
+N：Is set to bit 31 of the result of the instruction. **If this result is regarded as a two's complement 
+signed integer**, then N = 1 if the result is negative and N = 0 if it is positive or zero.
+Z：Is set to 1 if the result of the instruction is zero (this often indicates an equal result from a 
+comparison), and to 0 otherwise.
+C：For an addition, including the comparison instruction CMN, C is set to 1 if the 
+addition produced a carry (that is, an unsigned overflow), and to 0 otherwise.
+For a subtraction, including the comparison instruction CMP, C is set to 0 if the 
+subtraction produced a borrow (that is, an unsigned underflow), and to 1 otherwise.
+For non-addition/subtractions that incorporate a shift operation, C is set to the last bit 
+shifted out of the value by the shifter.  移位操作会改变C标志位，C标志位被设为移位器移位出的最后一位的值！
+For other non-addition/subtractions, C is normally left unchanged (but see the 
+individual instruction descriptions for any special cases).
+V：For an addition or subtraction, V is set to 1 if signed overflow occurred, regarding the 
+operands and result as two's complement signed integers.
+For non-addition/subtractions, V is normally left unchanged (but see the individual 
+instruction descriptions for any special cases).
 */
 union PSR {
 	struct {	//位域语法：type-specifier declarator(opt):constant-expression
@@ -298,7 +311,7 @@ struct ARMCore {        //ARM核心
 	int32_t bankedSPSRs[6];     //SPSR寄存器组，存储不同工作模式下每种工作模式下的SPSR
 
 	int32_t shifterOperand;     //数据处理指令第二源操作数的值
-	int32_t shifterCarryOut;    //数据处理指令带来的进位/借位?
+	int32_t shifterCarryOut;    //数据处理指令带来的C标志位的新值
 
 	uint32_t prefetch;              //预取指令
 	enum ExecutionMode executionMode;   //当前工作状态

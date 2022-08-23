@@ -27,13 +27,17 @@ Operand2       Immediate value          #32bit_Imm
                Logical shift right      Rm LSR #5bit_Imm
                Arithmetic shift right   Rm ASR #5bit_Imm
                Rotate right             Rm ROR #5bit_Imm
-               Register Rm
+               Register                 Rm
                Logical shift left       Rm LSL Rs
                Logical shift right      Rm LSR Rs
                Arithmetic shift right   Rm ASR Rs
                Rotate right             Rm ROR Rs
                Rotate right extended    Rm RRX
+注意：移位操作会改变C标志位，C标志位被设为移位器移位出的最后一位的值！
+注意：移位操作会改变C标志位，C标志位被设为移位器移位出的最后一位的值！
+注意：移位操作会改变C标志位，C标志位被设为移位器移位出的最后一位的值！
 */
+
 //逻辑左移
 static inline void _shiftLSL(struct ARMCore* cpu, uint32_t opcode) {
 	//第二源操作数使用的寄存器编号
@@ -81,7 +85,7 @@ static inline void _shiftLSR(struct ARMCore* cpu, uint32_t opcode) {
 	if (immediate) {
 		cpu->shifterOperand = ((uint32_t) cpu->gprs[rm]) >> immediate;
 		cpu->shifterCarryOut = (cpu->gprs[rm] >> (immediate - 1)) & 1;
-	} else {
+	} else {  //右移0位操作数变为0?和下面的右移32位相同
 		cpu->shifterOperand = 0;
 		cpu->shifterCarryOut = ARM_SIGN(cpu->gprs[rm]);
 	}
@@ -141,10 +145,10 @@ static inline void _shiftASRR(struct ARMCore* cpu, uint32_t opcode) {
 	} else if (shift < 32) {
 		cpu->shifterOperand = shiftVal >> shift;
 		cpu->shifterCarryOut = (shiftVal >> (shift - 1)) & 1;
-	} else if (cpu->gprs[rm] >> 31) {
+	} else if (cpu->gprs[rm] >> 31) {   //算数右移32位或以上，对于负数
 		cpu->shifterOperand = 0xFFFFFFFF;
 		cpu->shifterCarryOut = 1;
-	} else {
+	} else {    //算数右移32位或以上，对于正数
 		cpu->shifterOperand = 0;
 		cpu->shifterCarryOut = 0;
 	}
