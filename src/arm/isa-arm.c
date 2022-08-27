@@ -20,6 +20,7 @@ Addressing mode 1：Shifter operands for data processing instructions(数据处�
 1.数据处理指令中如果第二源操作数是一个寄存器(0-3位)则可以在其值送入ALU之前先对该寄存器的值进行移位操作(也可不移)，移位数可以是立即数(7-11)也可以由寄存器(8-11位)给出
   移位方式有LSL逻辑左移、ASL算数左移、LSR逻辑右移、ASR算数右移、ROR循环右移、PRX扩展的循环右移
 2.数据处理指令中如果第二源操作数是一个立即数则将第0-7位作为立即数种子immed，第8-11位作为移位因子rot，送往ALU的数为immed循环右移2*rot位的结果
+
 关于Operand2的说明：
 Operand        Type                     Mnemonic
 Operand2       Immediate value          #32bit_Imm
@@ -33,6 +34,7 @@ Operand2       Immediate value          #32bit_Imm
                Arithmetic shift right   Rm ASR Rs
                Rotate right             Rm ROR Rs
                Rotate right extended    Rm RRX
+
 注意：移位操作会改变C标志位，C标志位被设为移位器移位出的最后一位的值！
 注意：移位操作会改变C标志位，C标志位被设为移位器移位出的最后一位的值！
 注意：移位操作会改变C标志位，C标志位被设为移位器移位出的最后一位的值！
@@ -125,7 +127,7 @@ static inline void _shiftASR(struct ARMCore* cpu, uint32_t opcode) {
 		cpu->shifterCarryOut = (cpu->gprs[rm] >> (immediate - 1)) & 1;
 	} else {
 		cpu->shifterCarryOut = ARM_SIGN(cpu->gprs[rm]);
-		cpu->shifterOperand = cpu->shifterCarryOut;
+		cpu->shifterOperand = cpu->shifterCarryOut;    //算数右移0位，操作数变为C标志位?
 	}
 }
 
@@ -158,10 +160,10 @@ static inline void _shiftASRR(struct ARMCore* cpu, uint32_t opcode) {
 static inline void _shiftROR(struct ARMCore* cpu, uint32_t opcode) {
 	int rm = opcode & 0x0000000F;
 	int immediate = (opcode & 0x00000F80) >> 7;
-	if (immediate) {
+	if (immediate) {    //ROR 1-31位
 		cpu->shifterOperand = ARM_ROR(cpu->gprs[rm], immediate);
 		cpu->shifterCarryOut = (cpu->gprs[rm] >> (immediate - 1)) & 1;
-	} else {
+	} else {    //ROR 0位
 		// RRX
 		cpu->shifterOperand = (cpu->cpsr.c << 31) | (((uint32_t) cpu->gprs[rm]) >> 1);
 		cpu->shifterCarryOut = cpu->gprs[rm] & 0x00000001;
@@ -179,13 +181,13 @@ static inline void _shiftRORR(struct ARMCore* cpu, uint32_t opcode) {
 	}
 	int shift = cpu->gprs[rs] & 0xFF;
 	int rotate = shift & 0x1F;
-	if (!shift) {
+	if (!shift) {    //ROR 0位
 		cpu->shifterOperand = shiftVal;
 		cpu->shifterCarryOut = cpu->cpsr.c;
-	} else if (rotate) {
+	} else if (rotate) {    //ROR 1-31位
 		cpu->shifterOperand = ARM_ROR(shiftVal, rotate);
 		cpu->shifterCarryOut = (shiftVal >> (rotate - 1)) & 1;
-	} else {
+	} else {    //ROR 32位或32的倍数的位数
 		cpu->shifterOperand = shiftVal;
 		cpu->shifterCarryOut = ARM_SIGN(shiftVal);
 	}
@@ -195,10 +197,10 @@ static inline void _shiftRORR(struct ARMCore* cpu, uint32_t opcode) {
 static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 	int rotate = (opcode & 0x00000F00) >> 7;
 	int immediate = opcode & 0x000000FF;
-	if (!rotate) {
+	if (!rotate) {    //ROR 0位
 		cpu->shifterOperand = immediate;
 		cpu->shifterCarryOut = cpu->cpsr.c;
-	} else {
+	} else {    //ROR 1-31位
 		cpu->shifterOperand = ARM_ROR(immediate, rotate);
 		cpu->shifterCarryOut = ARM_SIGN(cpu->shifterOperand);
 	}
@@ -222,6 +224,7 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 		cpu->cpsr.v = ARM_V_ADDITION(M, N, D); \
 	}
 
+//设置了S标志的减法指令
 #define ARM_SUBTRACTION_S(M, N, D) \
 	if (rd == ARM_PC && _ARMModeHasSPSR(cpu->cpsr.priv)) { \
 		cpu->cpsr = cpu->spsr; \
