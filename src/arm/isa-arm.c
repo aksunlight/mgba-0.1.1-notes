@@ -240,6 +240,7 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 		cpu->cpsr.v = ARM_V_SUBTRACTION(M, N, D); \
 	}
 
+// 设置了S标志为的??指令	
 #define ARM_NEUTRAL_S(M, N, D) \
 	if (rd == ARM_PC && _ARMModeHasSPSR(cpu->cpsr.priv)) { \
 		cpu->cpsr = cpu->spsr; \
@@ -313,6 +314,7 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 			} \
 		})
 
+//定义ALU指令
 #define DEFINE_ALU_INSTRUCTION_ARM(NAME, S_BODY, BODY) \
 	DEFINE_ALU_INSTRUCTION_EX_ARM(NAME ## _LSL, , _shiftLSL, BODY) \
 	DEFINE_ALU_INSTRUCTION_EX_ARM(NAME ## S_LSL, S_BODY, _shiftLSL, BODY) \
@@ -456,6 +458,7 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 	DEFINE_LOAD_STORE_MULTIPLE_INSTRUCTION_EX_ARM(NAME ## SIBW, LS, ADDR_MODE_4_WRITEBACK_ ## NAME, ARM_MS_PRE, ARM_MS_POST, IB, POST_BODY)
 
 // Begin ALU definitions
+// 开始ALU定义
 
 DEFINE_ALU_INSTRUCTION_ARM(ADD, ARM_ADDITION_S(n, cpu->shifterOperand, cpu->gprs[rd]),
 	int32_t n = cpu->gprs[rn];
