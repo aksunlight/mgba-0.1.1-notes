@@ -91,7 +91,7 @@ N Z C V    Unsed    I F T Mode
 CPSR寄存器条件标志位的意义如下：
 N：负数，改变标志位的最后的ALU操作产生负数结果（32位结果的最高位是1）
 Z：零，改变标志位的最后的ALU操作产生0结果（32位结果的每一位都是0）
-C：进位，改变标志位的最后的ALU操作产生到符号位的进位
+C：进位/借位，改变标志位的最后的ALU操作产生到符号位的进位
 V：溢出，改变标志位的最后的ALU操作产生到符号位的溢出
 */
 enum PrivilegeMode {    //特权模式下PSR寄存器设置
@@ -194,12 +194,11 @@ ARM芯片的程序状态寄存器PSR（Program State Register）有两个
 除user、sys外的5种处理器模式都有一个专用的物理寄存器作为备份的程序状态寄存器
 当异常发生时, 这个物理寄存器负责保存CPSR当前程序状态寄存器的内容
 当异常处理程序返回时, 再将内容恢复到当前程序状态器中, 恢复现场后继续执行原来程序
-ARM CPSR寄存器格式（v4T架构）：
+ARM程序状态寄存器格式（v4T架构）：
 N Z C V    Unsed    I F T Mode
 31-28      27-8     7 6 5 4-0
 
 CPSR寄存器条件标志位的意义如下：The N, Z, C, and V (Negative, Zero, Carry and oVerflow)
-
 N：Is set to bit 31 of the result of the instruction. **If this result is regarded as a two's complement 
 signed integer**, then N = 1 if the result is negative and N = 0 if it is positive or zero.
 Z：Is set to 1 if the result of the instruction is zero (this often indicates an equal result from a 

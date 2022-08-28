@@ -13,14 +13,14 @@
 /*
 每条ARM指令都包含4位条件码，位于指令最高4位[31:28]，通过条件码和cpsr寄存器的条件标志位的对比决定是否执行当前指令
 
-CMP r0 #0    这条指令（比较指令就会更新cpsr中相应条件标志位）执行完后cpsr的Z标志位可能被置位1（r0=0）
+CMP r0 #0    这条指令（比较指令会更新cpsr中相应条件标志位，它实际上执行加减法操作）执行完后cpsr的Z标志位可能被置位1（r0=0）
 ADDEQ r1, r1, #1    条件执行指令，若前一条指令使得cpsr的Z标志位被置位1则该指令执行
 ADDNE r2, r2, #1    条件执行指令，若前一条指令使得cpsr的Z标志位仍未0则该指令执行
 
 cpsr寄存器条件标志位的意义如下：
 N：负数，改变标志位的最后的ALU操作产生负数结果（32位结果的最高位是1）
 Z：零，改变标志位的最后的ALU操作产生0结果（32位结果的每一位都是0）
-C：进位，改变标志位的最后的ALU操作产生到符号位的进位
+C：进位/借位，改变标志位的最后的ALU操作产生到符号位的进位
 V：溢出，改变标志位的最后的ALU操作产生到符号位的溢出
 */
 
@@ -40,17 +40,17 @@ V：溢出，改变标志位的最后的ALU操作产生到符号位的溢出
 #define ARM_COND_VS (cpu->cpsr.v)
 //V清零执行，未溢出
 #define ARM_COND_VC (!cpu->cpsr.v)
-//C置位Z清零，无符号数大于
+//C置位Z清零执行，无符号数大于
 #define ARM_COND_HI (cpu->cpsr.c && !cpu->cpsr.z)
-//C清零Z置位，无符号数小于或等于
+//C清零Z置位执行，无符号数小于或等于
 #define ARM_COND_LS (!cpu->cpsr.c || cpu->cpsr.z)
-//N等于V，带符号数大于或等于
+//N等于V执行，带符号数大于或等于
 #define ARM_COND_GE (!cpu->cpsr.n == !cpu->cpsr.v)
-//N不等于V，带符号数小于
+//N不等于V执行，带符号数小于
 #define ARM_COND_LT (!cpu->cpsr.n != !cpu->cpsr.v)
-//Z清零且N等于V，带符号数大于
+//Z清零且N等于V执行，带符号数大于
 #define ARM_COND_GT (!cpu->cpsr.z && !cpu->cpsr.n == !cpu->cpsr.v)
-//Z置位或N不等于V，带符号小于或等于
+//Z置位或N不等于V执行，带符号小于或等于
 #define ARM_COND_LE (cpu->cpsr.z || !cpu->cpsr.n != !cpu->cpsr.v)
 //忽略，无条件执行
 #define ARM_COND_AL 1
@@ -62,14 +62,23 @@ V：溢出，改变标志位的最后的ALU操作产生到符号位的溢出
 
 //加法运算带来进位
 #define ARM_CARRY_FROM(M, N, D) (((uint32_t) (M) >> 31) + ((uint32_t) (N) >> 31) > ((uint32_t) (D) >> 31))
-//减法运算带来借位
+//减法运算带来借位，不够减需要借位
 #define ARM_BORROW_FROM(M, N, D) (((uint32_t) (M)) >= ((uint32_t) (N)))
-//加法溢出
+//加法溢出，两个正数相加/两个负数相加可能会溢出，溢出表现为符号位发生了改变
 #define ARM_V_ADDITION(M, N, D) (!(ARM_SIGN((M) ^ (N))) && (ARM_SIGN((M) ^ (D))) && (ARM_SIGN((N) ^ (D))))
-//减法溢出
+//减法溢出，正数减去负数/负数减去正数可能溢出，相当于两个正数相加/两个负数相加
 #define ARM_V_SUBTRACTION(M, N, D) ((ARM_SIGN((M) ^ (N))) && (ARM_SIGN((M) ^ (D))))
 
-//计算乘法指令的时钟周期数
+/*计算乘法指令的时钟周期数
+R=0xFFFFFF00 || R=0~0xFF	1字节
+	+1
+R=0xFFFF0000 || R=0x0100~0xFFFF	2字节
+	+2
+R=0xFF000000 || R=0x010000~0xFFFFFF	3字节
+	+3
+R=0x01000000~0xFFFFFFFF	4字节
+	+4
+*/
 #define ARM_WAIT_MUL(R) \
 	if ((R & 0xFFFFFF00) == 0xFFFFFF00 || !(R & 0xFFFFFF00)) { \
 		currentCycles += 1; \
