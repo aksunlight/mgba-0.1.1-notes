@@ -291,6 +291,7 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 #define ARM_STORE_POST_BODY \
 	currentCycles += cpu->memory.activeNonseqCycles32 - cpu->memory.activeSeqCycles32;
 
+//定义ARM指令的公共部分
 #define DEFINE_INSTRUCTION_ARM(NAME, BODY) \
 	static void _ARMInstruction ## NAME (struct ARMCore* cpu, uint32_t opcode) { \
 		int currentCycles = ARM_PREFETCH_CYCLES; \
@@ -298,6 +299,28 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 		cpu->cycles += currentCycles; \
 	}
 
+/*
+宏定义：DEFINE_ALU_INSTRUCTION_EX_ARM(NAME, S_BODY, SHIFTER, BODY)
+替换文本：
+static void _ARMInstruction ## NAME (struct ARMCore* cpu, uint32_t opcode) {
+		int currentCycles = ARM_PREFETCH_CYCLES;
+		int rd = (opcode >> 12) & 0xF;
+		int rn = (opcode >> 16) & 0xF;
+		UNUSED(rn);
+		SHIFTER(cpu, opcode);
+		BODY;
+		S_BODY;
+		if (rd == ARM_PC) {
+			if (cpu->executionMode == MODE_ARM) {
+				ARM_WRITE_PC;
+			} else {
+				THUMB_WRITE_PC;
+			}
+		}
+		cpu->cycles += currentCycles;
+	}
+*/
+//算数逻辑指令需要在ARM指令宏上扩展
 #define DEFINE_ALU_INSTRUCTION_EX_ARM(NAME, S_BODY, SHIFTER, BODY) \
 	DEFINE_INSTRUCTION_ARM(NAME, \
 		int rd = (opcode >> 12) & 0xF; \
@@ -314,7 +337,48 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 			} \
 		})
 
-//定义ALU指令
+/*
+宏定义：DEFINE_ALU_INSTRUCTION_ARM(NAME, S_BODY, BODY)
+替换文本：
+**DEFINE_ALU_INSTRUCTION_EX_ARM(NAME ## _LSL, , _shiftLSL, BODY)**
+static void _ARMInstruction ## NAME ## _LSL (struct ARMCore* cpu, uint32_t opcode) {
+		int currentCycles = ARM_PREFETCH_CYCLES;
+		int rd = (opcode >> 12) & 0xF;
+		int rn = (opcode >> 16) & 0xF;
+		UNUSED(rn);
+		_shiftLSL(cpu, opcode);
+		BODY;
+		;
+		if (rd == ARM_PC) {
+			if (cpu->executionMode == MODE_ARM) {
+				ARM_WRITE_PC;
+			} else {
+				THUMB_WRITE_PC;
+			}
+		}
+		cpu->cycles += currentCycles;
+	}
+**DEFINE_ALU_INSTRUCTION_EX_ARM(NAME ## S_LSL, S_BODY, _shiftLSL, BODY)**
+static void _ARMInstruction ## NAME ## S_LSL (struct ARMCore* cpu, uint32_t opcode) {
+		int currentCycles = ARM_PREFETCH_CYCLES;
+		int rd = (opcode >> 12) & 0xF;
+		int rn = (opcode >> 16) & 0xF;
+		UNUSED(rn);
+		_shiftLSL(cpu, opcode);
+		BODY;
+		S_BODY;
+		if (rd == ARM_PC) {
+			if (cpu->executionMode == MODE_ARM) {
+				ARM_WRITE_PC;
+			} else {
+				THUMB_WRITE_PC;
+			}
+		}
+		cpu->cycles += currentCycles;
+	}
+	......
+*/
+//定义算数逻辑运算(算术、逻辑、比较)指令的宏
 #define DEFINE_ALU_INSTRUCTION_ARM(NAME, S_BODY, BODY) \
 	DEFINE_ALU_INSTRUCTION_EX_ARM(NAME ## _LSL, , _shiftLSL, BODY) \
 	DEFINE_ALU_INSTRUCTION_EX_ARM(NAME ## S_LSL, S_BODY, _shiftLSL, BODY) \
@@ -346,6 +410,26 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 	DEFINE_ALU_INSTRUCTION_EX_ARM(NAME ## _RORR, S_BODY, _shiftRORR, BODY) \
 	DEFINE_ALU_INSTRUCTION_EX_ARM(NAME ## I, S_BODY, _immediate, BODY)
 
+/*
+宏定义：DEFINE_MULTIPLY_INSTRUCTION_EX_ARM(NAME, BODY, S_BODY)
+替换文本：
+static void _ARMInstruction ## NAME (struct ARMCore* cpu, uint32_t opcode) {
+		int currentCycles = ARM_PREFETCH_CYCLES;
+		int rd = (opcode >> 12) & 0xF;
+		int rdHi = (opcode >> 16) & 0xF;
+		int rs = (opcode >> 8) & 0xF;
+		int rm = opcode & 0xF;
+		UNUSED(rdHi);
+		ARM_WAIT_MUL(cpu->gprs[rs]);
+		BODY;
+		S_BODY;
+		if (rd == ARM_PC) {
+			ARM_WRITE_PC;
+		}
+		cpu->cycles += currentCycles;
+	}
+*/
+//乘法指令需要在ARM指令宏上扩展
 #define DEFINE_MULTIPLY_INSTRUCTION_EX_ARM(NAME, BODY, S_BODY) \
 	DEFINE_INSTRUCTION_ARM(NAME, \
 		int rd = (opcode >> 12) & 0xF; \
@@ -360,10 +444,28 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 			ARM_WRITE_PC; \
 		})
 
+//定义乘法运算指令的宏
 #define DEFINE_MULTIPLY_INSTRUCTION_ARM(NAME, BODY, S_BODY) \
 	DEFINE_MULTIPLY_INSTRUCTION_EX_ARM(NAME, BODY, ) \
 	DEFINE_MULTIPLY_INSTRUCTION_EX_ARM(NAME ## S, BODY, S_BODY)
 
+/*
+宏定义：DEFINE_LOAD_STORE_INSTRUCTION_EX_ARM(NAME, ADDRESS, WRITEBACK, BODY)
+替换文本：
+static void _ARMInstruction ## NAME (struct ARMCore* cpu, uint32_t opcode) {
+		int currentCycles = ARM_PREFETCH_CYCLES;
+		uint32_t address;
+		int rn = (opcode >> 16) & 0xF;
+		int rd = (opcode >> 12) & 0xF;
+		int rm = opcode & 0xF;
+		UNUSED(rm);
+		address = ADDRESS;
+		WRITEBACK;
+		BODY;
+		cpu->cycles += currentCycles;
+	}
+*/
+//数据加载/存储指令需要在ARM指令宏上扩展
 #define DEFINE_LOAD_STORE_INSTRUCTION_EX_ARM(NAME, ADDRESS, WRITEBACK, BODY) \
 	DEFINE_INSTRUCTION_ARM(NAME, \
 		uint32_t address; \
@@ -375,6 +477,7 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 		WRITEBACK; \
 		BODY;)
 
+//定义数据加载/存储指令的宏
 #define DEFINE_LOAD_STORE_INSTRUCTION_SHIFTER_ARM(NAME, SHIFTER, BODY) \
 	DEFINE_LOAD_STORE_INSTRUCTION_EX_ARM(NAME, ADDR_MODE_2_RN, ADDR_MODE_2_WRITEBACK(ADDR_MODE_2_INDEX(-, SHIFTER)), BODY) \
 	DEFINE_LOAD_STORE_INSTRUCTION_EX_ARM(NAME ## U, ADDR_MODE_2_RN, ADDR_MODE_2_WRITEBACK(ADDR_MODE_2_INDEX(+, SHIFTER)), BODY) \
@@ -427,6 +530,23 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 
 #define ARM_MS_POST ARMSetPrivilegeMode(cpu, privilegeMode);
 
+/*
+宏定义：DEFINE_LOAD_STORE_MULTIPLE_INSTRUCTION_EX_ARM(NAME, LS, WRITEBACK, S_PRE, S_POST, DIRECTION, POST_BODY)
+替换文本：
+static void _ARMInstruction ## NAME (struct ARMCore* cpu, uint32_t opcode) {
+		int currentCycles = ARM_PREFETCH_CYCLES;
+		int rn = (opcode >> 16) & 0xF;
+		int rs = opcode & 0x0000FFFF;
+		uint32_t address = cpu->gprs[rn];
+		S_PRE;
+		address = cpu->memory. LS ## Multiple(cpu, address, rs, LSM_ ## DIRECTION, &currentCycles);
+		S_POST;
+		POST_BODY;
+		WRITEBACK;
+		cpu->cycles += currentCycles;
+	}
+*/
+//数据加载/存储指令需要在ARM指令宏上扩展
 #define DEFINE_LOAD_STORE_MULTIPLE_INSTRUCTION_EX_ARM(NAME, LS, WRITEBACK, S_PRE, S_POST, DIRECTION, POST_BODY) \
 	DEFINE_INSTRUCTION_ARM(NAME, \
 		int rn = (opcode >> 16) & 0xF; \
@@ -438,7 +558,7 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 		POST_BODY; \
 		WRITEBACK;)
 
-
+//定义数据加载/存储（多个）指令的宏
 #define DEFINE_LOAD_STORE_MULTIPLE_INSTRUCTION_ARM(NAME, LS, POST_BODY) \
 	DEFINE_LOAD_STORE_MULTIPLE_INSTRUCTION_EX_ARM(NAME ## DA,   LS,                               ,           ,            , DA, POST_BODY) \
 	DEFINE_LOAD_STORE_MULTIPLE_INSTRUCTION_EX_ARM(NAME ## DAW,  LS, ADDR_MODE_4_WRITEBACK_ ## NAME,           ,            , DA, POST_BODY) \
@@ -459,7 +579,6 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 
 // Begin ALU definitions
 // 开始ALU定义
-
 DEFINE_ALU_INSTRUCTION_ARM(ADD, ARM_ADDITION_S(n, cpu->shifterOperand, cpu->gprs[rd]),
 	int32_t n = cpu->gprs[rn];
 	cpu->gprs[rd] = n + cpu->shifterOperand;)
