@@ -240,7 +240,7 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 		cpu->cpsr.v = ARM_V_SUBTRACTION(M, N, D); \
 	}
 
-// 设置了S标志为的??指令	
+//设置了S标志为的??指令	
 #define ARM_NEUTRAL_S(M, N, D) \
 	if (rd == ARM_PC && _ARMModeHasSPSR(cpu->cpsr.priv)) { \
 		cpu->cpsr = cpu->spsr; \
@@ -250,7 +250,7 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 		cpu->cpsr.z = !(D); \
 		cpu->cpsr.c = cpu->shifterCarryOut; \
 	}
-
+//??
 #define ARM_NEUTRAL_HI_S(DLO, DHI) \
 	cpu->cpsr.n = ARM_SIGN(DHI); \
 	cpu->cpsr.z = !((DHI) | (DLO));
@@ -577,8 +577,12 @@ static void _ARMInstruction ## NAME (struct ARMCore* cpu, uint32_t opcode) {
 	DEFINE_LOAD_STORE_MULTIPLE_INSTRUCTION_EX_ARM(NAME ## SIB,  LS,                               , ARM_MS_PRE, ARM_MS_POST, IB, POST_BODY) \
 	DEFINE_LOAD_STORE_MULTIPLE_INSTRUCTION_EX_ARM(NAME ## SIBW, LS, ADDR_MODE_4_WRITEBACK_ ## NAME, ARM_MS_PRE, ARM_MS_POST, IB, POST_BODY)
 
-// Begin ALU definitions
-// 开始ALU定义
+/* Begin ALU definitions，开始ALU指令定义
+
+   Arithmetic: ADD ADC SUB SBC RSB RSC CMP CMN
+      Logical: AND EOR ORR BIC TST TEQ
+         Move: MOV MVN
+*/
 DEFINE_ALU_INSTRUCTION_ARM(ADD, ARM_ADDITION_S(n, cpu->shifterOperand, cpu->gprs[rd]),
 	int32_t n = cpu->gprs[rn];
 	cpu->gprs[rd] = n + cpu->shifterOperand;)
@@ -634,10 +638,17 @@ DEFINE_ALU_INSTRUCTION_S_ONLY_ARM(TEQ, ARM_NEUTRAL_S(cpu->gprs[rn], cpu->shifter
 DEFINE_ALU_INSTRUCTION_S_ONLY_ARM(TST, ARM_NEUTRAL_S(cpu->gprs[rn], cpu->shifterOperand, aluOut),
 	int32_t aluOut = cpu->gprs[rn] & cpu->shifterOperand;)
 
-// End ALU definitions
+// End ALU definitions，结束ALU指令定义
 
-// Begin multiply definitions
+/* Begin multiply definitions，开始乘法指令定义
 
+   MUL: Multiply
+   MLA: Multiply accumulate
+   UMULL: Multiply unsigned long
+   UMLAL: Multiply unsigned accumulate long
+   SMULL: Multiply signed long
+   SMLAL: Multiply signed accumulate long
+*/
 DEFINE_MULTIPLY_INSTRUCTION_ARM(MLA, cpu->gprs[rdHi] = cpu->gprs[rm] * cpu->gprs[rs] + cpu->gprs[rd], ARM_NEUTRAL_S(, , cpu->gprs[rdHi]))
 DEFINE_MULTIPLY_INSTRUCTION_ARM(MUL, cpu->gprs[rdHi] = cpu->gprs[rm] * cpu->gprs[rs], ARM_NEUTRAL_S(cpu->gprs[rm], cpu->gprs[rs], cpu->gprs[rdHi]))
 
@@ -669,10 +680,15 @@ DEFINE_MULTIPLY_INSTRUCTION_ARM(UMULL,
 	cpu->gprs[rdHi] = d >> 32;,
 	ARM_NEUTRAL_HI_S(cpu->gprs[rd], cpu->gprs[rdHi]))
 
-// End multiply definitions
+// End multiply definitions，结束乘法指令定义
 
-// Begin load/store definitions
+/* Begin load/store definitions，开始加载/存储指令定义
 
+   LDR(LDRT) LDRH LDRB(LDRBT) LDRSH LDRSB
+   STR(STRT) STRH STRB(STRBT)
+   LDM
+   STM
+*/
 DEFINE_LOAD_STORE_INSTRUCTION_ARM(LDR, cpu->gprs[rd] = cpu->memory.load32(cpu, address, &currentCycles); ARM_LOAD_POST_BODY;)
 DEFINE_LOAD_STORE_INSTRUCTION_ARM(LDRB, cpu->gprs[rd] = cpu->memory.loadU8(cpu, address, &currentCycles); ARM_LOAD_POST_BODY;)
 DEFINE_LOAD_STORE_MODE_3_INSTRUCTION_ARM(LDRH, cpu->gprs[rd] = cpu->memory.loadU16(cpu, address, &currentCycles); ARM_LOAD_POST_BODY;)
@@ -737,10 +753,14 @@ DEFINE_INSTRUCTION_ARM(SWPB,
 	cpu->memory.store8(cpu, cpu->gprs[rn], cpu->gprs[rm], &currentCycles);
 	cpu->gprs[rd] = d;)
 
-// End load/store definitions
+// End load/store definitions，结束加载/存储指令定义
 
-// Begin branch definitions
+/* Begin branch definitions，开始分支指令定义
 
+   B: Branch
+   BL: Branch with link
+   BX: Branch and exchange instruction set
+*/
 DEFINE_INSTRUCTION_ARM(B,
 	int32_t offset = opcode << 8;
 	offset >>= 6;
@@ -763,18 +783,29 @@ DEFINE_INSTRUCTION_ARM(BX,
 		ARM_WRITE_PC;
 	})
 
-// End branch definitions
+// End branch definitions，结束分支指令定义
 
-// Begin coprocessor definitions
+/* Begin coprocessor definitions，协处理器指令定义
 
+   CDP: Data operation
+   LDC: Load
+   STC: Store
+   MRC: Move to ARM register from coprocessor
+   MCR: Move to coprocessor from ARM register
+*/
 DEFINE_INSTRUCTION_ARM(CDP, ARM_STUB)
 DEFINE_INSTRUCTION_ARM(LDC, ARM_STUB)
 DEFINE_INSTRUCTION_ARM(STC, ARM_STUB)
 DEFINE_INSTRUCTION_ARM(MCR, ARM_STUB)
 DEFINE_INSTRUCTION_ARM(MRC, ARM_STUB)
 
-// Begin miscellaneous definitions
+/* Begin miscellaneous definitions，杂项（不好分类的指令）
 
+   BKPT ILL
+   MSR MSRR MSRI MSRRI
+   MRS MRSR 
+   SWI
+*/
 DEFINE_INSTRUCTION_ARM(BKPT, ARM_STUB) // Not strictly in ARMv4T, but here for convenience
 DEFINE_INSTRUCTION_ARM(ILL, ARM_ILL) // Illegal opcode
 
