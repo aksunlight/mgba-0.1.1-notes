@@ -256,6 +256,7 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 	cpu->cpsr.n = ARM_SIGN(DHI); \
 	cpu->cpsr.z = !((DHI) | (DLO));
 
+//Addressing Mode 2：Load and Store Word or Unsigned Byte
 #define ADDR_MODE_2_I_TEST (opcode & 0x00000F80)
 #define ADDR_MODE_2_I ((opcode & 0x00000F80) >> 7)
 #define ADDR_MODE_2_ADDRESS (address)
