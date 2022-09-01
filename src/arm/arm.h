@@ -209,6 +209,7 @@ For a subtraction, including the comparison instruction CMP, C is set to 0 if th
 subtraction produced a borrow (that is, an unsigned underflow), and to 1 otherwise.
 For non-addition/subtractions that incorporate a shift operation, C is set to the last bit 
 shifted out of the value by the shifter.  移位操作会改变C标志位，C标志位被设为移位器移位出的最后一位的值！
+具体来说，移位操作使得移位器产生进位carry-out，这个进位一般是移位器移出的最后一位的值，这个值被一些指令用来设置C标志位
 For other non-addition/subtractions, C is normally left unchanged (but see the 
 individual instruction descriptions for any special cases).
 V：For an addition or subtraction, V is set to 1 if signed overflow occurred, regarding the 

@@ -35,23 +35,26 @@ Operand2       Immediate value          #32bit_Imm
 对于S标志位：如果指令中的S位置位，那么会更新CPSR中相应的条件标志位，如果目的寄存器又是R15(PC)，还会将当前模式的SPSR恢复到CPSR中(该指令的运算结果并不影响CPSR的标志位)
 1.数据处理指令中如果第二源操作数是一个寄存器(0-3位)则可以在其值送入ALU之前先对该寄存器的值进行移位操作(也可不移)，移位数可以是立即数(7-11)也可以由寄存器(8-11位)给出
   如果由寄存器给出则指令第4位为1，第7位为0，如果由寄存器给出则指令第4位为0，移位方式有LSL逻辑左移 ASL算数左移 LSR逻辑右移 ASR算数右移 ROR循环右移 PRX扩展的循环右移
-2.数据处理指令中如果第二源操作数是一个32位立即(0-7位)数则将第0-7位作为立即数种子immed，第8-11位作为移位因子rot，送往ALU的数为immed循环右移2*rot位的结果
+2.数据处理指令中如果第二源操作数是一个32位立即(0-7位)数则将第0-7位作为立即数种子immed，第8-11位作为移位因子rot，送往ALU的数为immed循环右移2*rot位(xxxx0，2的倍数，偶数)的结果
 
-注意：移位操作会改变C标志位，C标志位被设为移位器移位出的最后一位的值！
-注意：移位操作会改变C标志位，C标志位被设为移位器移位出的最后一位的值！
-注意：移位操作会改变C标志位，C标志位被设为移位器移位出的最后一位的值！
+For non-addition/subtractions that incorporate a shift operation, C is set to the last bit 
+shifted out of the value by the shifter. As well as producing the shifter operand, 
+the shifter produces a carry-out which some instructions write into the Carry Flag.
+注意：移位操作会改变C标志位，大部分情况C标志位被设为移位器移位出的最后一位的值！
+具体来说，移位操作使得移位器产生进位carry-out，这个进位一般是移位器移出的最后一位的值，这个值被一些指令用来设置C标志位！
 */
 
-//逻辑左移
+//逻辑左移，当Operand2是一个无移位的寄存器时，实际就是该寄存器逻辑左移立即数0
 static inline void _shiftLSL(struct ARMCore* cpu, uint32_t opcode) {
 	//第二源操作数使用的寄存器编号
 	int rm = opcode & 0x0000000F;
 	//寄存器的值逻辑左移immediate位
 	int immediate = (opcode & 0x00000F80) >> 7;
-	if (!immediate) {
+	if (!immediate) {    //LSL 0位
 		cpu->shifterOperand = cpu->gprs[rm];
+		//当Operan2是一个无移位的寄存器或者一个寄存器逻辑左移立即数0，移位器产生的进位就是C标志位
 		cpu->shifterCarryOut = cpu->cpsr.c;
-	} else {
+	} else {    //LSL 1-31位
 		cpu->shifterOperand = cpu->gprs[rm] << immediate;
 		cpu->shifterCarryOut = (cpu->gprs[rm] >> (32 - immediate)) & 1;
 	}
@@ -67,16 +70,16 @@ static inline void _shiftLSLR(struct ARMCore* cpu, uint32_t opcode) {
 		shiftVal += 4;
 	}
 	int shift = cpu->gprs[rs] & 0xFF;
-	if (!shift) {
+	if (!shift) {	//LSL 0位
 		cpu->shifterOperand = shiftVal;
 		cpu->shifterCarryOut = cpu->cpsr.c;
-	} else if (shift < 32) {
+	} else if (shift < 32) {	//LSL 1-31位
 		cpu->shifterOperand = shiftVal << shift;
 		cpu->shifterCarryOut = (shiftVal >> (32 - shift)) & 1;
-	} else if (shift == 32) {
+	} else if (shift == 32) {	//LSL 32位
 		cpu->shifterOperand = 0;
 		cpu->shifterCarryOut = shiftVal & 1;
-	} else {
+	} else {	//LSL 32-0xFF位
 		cpu->shifterOperand = 0;
 		cpu->shifterCarryOut = 0;
 	}
@@ -86,10 +89,10 @@ static inline void _shiftLSLR(struct ARMCore* cpu, uint32_t opcode) {
 static inline void _shiftLSR(struct ARMCore* cpu, uint32_t opcode) {
 	int rm = opcode & 0x0000000F;
 	int immediate = (opcode & 0x00000F80) >> 7;
-	if (immediate) {
+	if (immediate) {	//LSR 1-31位
 		cpu->shifterOperand = ((uint32_t) cpu->gprs[rm]) >> immediate;
 		cpu->shifterCarryOut = (cpu->gprs[rm] >> (immediate - 1)) & 1;
-	} else {  //右移0位操作数变为0?和下面的右移32位相同
+	} else {  //注意是LSR 32位，A shift by 32 is encoded by shift_imm == 0
 		cpu->shifterOperand = 0;
 		cpu->shifterCarryOut = ARM_SIGN(cpu->gprs[rm]);
 	}
@@ -124,12 +127,12 @@ static inline void _shiftLSRR(struct ARMCore* cpu, uint32_t opcode) {
 static inline void _shiftASR(struct ARMCore* cpu, uint32_t opcode) {
 	int rm = opcode & 0x0000000F;
 	int immediate = (opcode & 0x00000F80) >> 7;
-	if (immediate) {
+	if (immediate) {	//ASR 1-31位
 		cpu->shifterOperand = cpu->gprs[rm] >> immediate;
 		cpu->shifterCarryOut = (cpu->gprs[rm] >> (immediate - 1)) & 1;
-	} else {
+	} else {	//注意是LSR 32位
 		cpu->shifterCarryOut = ARM_SIGN(cpu->gprs[rm]);
-		cpu->shifterOperand = cpu->shifterCarryOut;    //算数右移0位，操作数变为C标志位?
+		cpu->shifterOperand = cpu->shifterCarryOut;	//按手册的话cpu->shifterOperand = 0xFFFFFFFF或0
 	}
 }
 
@@ -164,9 +167,12 @@ static inline void _shiftROR(struct ARMCore* cpu, uint32_t opcode) {
 	int immediate = (opcode & 0x00000F80) >> 7;
 	if (immediate) {    //ROR 1-31位
 		cpu->shifterOperand = ARM_ROR(cpu->gprs[rm], immediate);
+		//The carry-out from the shifter is the last bit rotated off the right end.
 		cpu->shifterCarryOut = (cpu->gprs[rm] >> (immediate - 1)) & 1;
-	} else {    //ROR 0位
-		// RRX
+	} else {    //当ROR 0位时转为RRX指令
+		//RRX, This data-processing operand can be used to perform a 33-bit rotate right using the Carry Flag as the 33rd bit.
+		//This instruction operand is the value of register Rm shifted right by one bit, with the Carry Flag replacing 
+        //the vacated bit position. The carry-out from the shifter is the bit shifted off the right end.
 		cpu->shifterOperand = (cpu->cpsr.c << 31) | (((uint32_t) cpu->gprs[rm]) >> 1);
 		cpu->shifterCarryOut = cpu->gprs[rm] & 0x00000001;
 	}
@@ -196,6 +202,9 @@ static inline void _shiftRORR(struct ARMCore* cpu, uint32_t opcode) {
 }
 
 //立即数循环右移
+//rule: The <shifter_operand> value is formed by rotating (to the right) an 8-bit immediate value to any even bit 
+//position in a 32-bit word. **If the rotate immediate is zero, the carry-out from the shifter is the value of the
+//C flag, otherwise, it is set to bit[31] of the value of <shifter_operand>**
 static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 	int rotate = (opcode & 0x00000F00) >> 7;
 	int immediate = opcode & 0x000000FF;
@@ -210,7 +219,7 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 
 // Instruction definitions，指令定义
 // Beware pre-processor antics，担心指令预取异常
-// 数据处理指令格式：Cond(31-28) 0 0 1 Opcode(24-21) S(20) Rn(19-16) Rd(15-12) **Operand2(11-0)**
+// 数据处理指令格式：Cond(31-28) 0 0 1/0 Opcode(24-21) S(20) Rn(19-16) Rd(15-12) **Operand2(11-0)**
 
 //数据扩展成64位
 #define NO_EXTEND64(V) (uint64_t)(uint32_t) (V)
