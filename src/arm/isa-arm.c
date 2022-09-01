@@ -14,9 +14,9 @@
 #define PSR_STATE_MASK  0x00000020
 
 /*
-Addressing mode 1：Shifter operands for data processing instructions(数据处理指令中的移位操作数)
-数据处理指令助记符的语法格式：<Opcode>{<Cond>}{S} <Rd>, <Rn>{, <Operand2>}
-数据处理指令格式：Cond(31-28) 0 0 1 Opcode(24-21) S(20) Rn(19-16) Rd(15-12) **Operand2(11-0)**
+Addressing mode 1：Shifter operands for data processing instructions(数据处理指令中的移位操作数的寻址模式)
+数据处理指令助记符的语法格式：<Opcode>{<Cond>}{S} <Rd>, <Rn>, <Operand2>，注意：<Operand2>即<shifter_operand>
+数据处理指令格式：Cond(31-28) 0 0 0/1 Opcode(24-21) S(20) Rn(19-16) Rd(15-12) **Operand2(11-0)**
 对于S标志位：如果指令中的S位置位，那么会更新CPSR中相应的条件标志位，如果目的寄存器又是R15(PC)，还会将当前模式的SPSR恢复到CPSR中(该指令的运算结果并不影响CPSR的标志位)
 1.数据处理指令中如果第二源操作数是一个寄存器(0-3位)则可以在其值送入ALU之前先对该寄存器的值进行移位操作(也可不移)，移位数可以是立即数(7-11)也可以由寄存器(8-11位)给出
   移位方式有LSL逻辑左移、ASL算数左移、LSR逻辑右移、ASR算数右移、ROR循环右移、PRX扩展的循环右移
