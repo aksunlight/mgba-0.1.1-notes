@@ -9,9 +9,9 @@
 #include "emitter-arm.h"
 #include "isa-inlines.h"
 
-#define PSR_USER_MASK   0xF0000000
-#define PSR_PRIV_MASK   0x000000CF
-#define PSR_STATE_MASK  0x00000020
+#define PSR_USER_MASK   0xF0000000 //条件标志位
+#define PSR_PRIV_MASK   0x000000CF //中断使能位和工作模式
+#define PSR_STATE_MASK  0x00000020 //工作状态标志位
 
 /*
 Addressing mode 1：Shifter operands for data processing instructions(数据处理指令中的移位操作数的寻址模式)
@@ -130,7 +130,7 @@ static inline void _shiftASR(struct ARMCore* cpu, uint32_t opcode) {
 	if (immediate) {	//ASR 1-31位
 		cpu->shifterOperand = cpu->gprs[rm] >> immediate;
 		cpu->shifterCarryOut = (cpu->gprs[rm] >> (immediate - 1)) & 1;
-	} else {	//注意是LSR 32位
+	} else {	//注意是ASR 32位，A shift by 32 is encoded by shift_imm == 0
 		cpu->shifterCarryOut = ARM_SIGN(cpu->gprs[rm]);
 		cpu->shifterOperand = cpu->shifterCarryOut;	//按手册的话cpu->shifterOperand = 0xFFFFFFFF或0
 	}
