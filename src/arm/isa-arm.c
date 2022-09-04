@@ -14,27 +14,31 @@
 #define PSR_STATE_MASK  0x00000020 //工作状态标志位
 
 /*
-Addressing mode 1：Shifter operands for data processing instructions(数据处理指令中的移位操作数的寻址模式)
-数据处理指令助记符的语法格式：<Opcode>{<Cond>}{S} <Rd>, <Rn>, <Operand2>，注意：<Operand2>即<shifter_operand>！
-数据处理指令格式：Cond(31-28) 0 0 0/1 Opcode(24-21) S(20) Rn(19-16) Rd(15-12) **Operand2(11-0)**
+Addressing mode 1：Shifter operands for data processing instructions(数据处理指令中的**移位操作数**的计算方法)
 
-关于Operand2的说明：
-Operand        Type                     Mnemonic
-Operand2       Immediate value          #32bit_Imm
-               Logical shift left       Rm LSL #5bit_Imm
-               Logical shift right      Rm LSR #5bit_Imm
-               Arithmetic shift right   Rm ASR #5bit_Imm
-               Rotate right             Rm ROR #5bit_Imm
-               Register                 Rm
-               Logical shift left       Rm LSL Rs
-               Logical shift right      Rm LSR Rs
-               Arithmetic shift right   Rm ASR Rs
-               Rotate right             Rm ROR Rs
-               Rotate right extended    Rm RRX
+数据处理指令助记符：<Opcode>{<Cond>}{S} <Rd>, <Rn>, <Operand2>，注意：<Operand2>即<shifter_operand>！
+<Operand2>助记符具体形式如下：
+			#<immediate>
+			<Rm>
+			<Rm>, LSL #<shift_imm>
+			<Rm>, LSL <Rs>
+			<Rm>, LSR #<shift_imm>
+			<Rm>, LSR <Rs>
+			<Rm>, ASR #<shift_imm>
+			<Rm>, ASR <Rs>
+			<Rm>, ROR #<shift_imm>
+			<Rm>, ROR <Rs>
+			<Rm>, RRX
+
+数据处理指令格式：Cond(31-28) 0 0 0/1 Opcode(24-21) S(20) Rn(19-16) Rd(15-12) **Operand2(11-0)**
+Operand2的编码如下：
+32-bit immediate：cond 0 0 1 opcode S Rn Rd **rotate_imm(4) immed_8**
+Immediate shifts：cond 0 0 0 opcode S Rn Rd **shift_imm(5) shift(2) 0 Rm**
+Register shifts： cond 0 0 0 opcode S Rn Rd **Rs 0 shift(2) 1 Rm**
 
 对于S标志位：如果指令中的S位置位，那么会更新CPSR中相应的条件标志位，如果目的寄存器又是R15(PC)，还会将当前模式的SPSR恢复到CPSR中(该指令的运算结果并不影响CPSR的标志位)
 1.数据处理指令中如果第二源操作数是一个寄存器(0-3位)则可以在其值送入ALU之前先对该寄存器的值进行移位操作(也可不移)，移位数可以是立即数(7-11)也可以由寄存器(8-11位)给出
-  如果由寄存器给出则指令第4位为1，第7位为0，如果由寄存器给出则指令第4位为0，移位方式有LSL逻辑左移 ASL算数左移 LSR逻辑右移 ASR算数右移 ROR循环右移 PRX扩展的循环右移
+  如果由寄存器给出则指令第4位为1，第7位为0，如果由寄存器给出则指令第4位为0，移位方式实际有LSL逻辑左移 LSR逻辑右移 ASR算数右移 ROR循环右移，ASL等同LSL，RRX并入ROR
 2.数据处理指令中如果第二源操作数是一个32位立即(0-7位)数则将第0-7位作为立即数种子immed，第8-11位作为移位因子rot，送往ALU的数为immed循环右移2*rot位(xxxx0，2的倍数，偶数)的结果
 
 For non-addition/subtractions that incorporate a shift operation, C is set to the last bit 
@@ -132,7 +136,7 @@ static inline void _shiftASR(struct ARMCore* cpu, uint32_t opcode) {
 		cpu->shifterCarryOut = (cpu->gprs[rm] >> (immediate - 1)) & 1;
 	} else {	//注意是ASR 32位，A shift by 32 is encoded by shift_imm == 0
 		cpu->shifterCarryOut = ARM_SIGN(cpu->gprs[rm]);
-		cpu->shifterOperand = cpu->shifterCarryOut;	//按手册的话cpu->shifterOperand = 0xFFFFFFFF或0
+		cpu->shifterOperand = cpu->shifterCarryOut;	//按手册的话cpu->shifterOperand = 0xFFFFFFFF或0，这里是1或0
 	}
 }
 
@@ -224,9 +228,9 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 //数据扩展成64位
 #define NO_EXTEND64(V) (uint64_t)(uint32_t) (V)
 
-//设置了S标志的加法指令
-//将更新CPSR中相应的条件标志位，如果目的寄存器又是R15(PC)
+//设置了S标志将更新CPSR中相应的条件标志位，如果目的寄存器又是R15(PC)
 //还会将当前模式的SPSR恢复到CPSR中(该指令的运算结果并不影响CPSR的标志位)
+//设置了S标志位的加法指令
 #define ARM_ADDITION_S(M, N, D) \
 	if (rd == ARM_PC && _ARMModeHasSPSR(cpu->cpsr.priv)) { \
 		cpu->cpsr = cpu->spsr; \
@@ -260,17 +264,32 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 		cpu->cpsr.z = !(D); \
 		cpu->cpsr.c = cpu->shifterCarryOut; \
 	}
+
 //??
 #define ARM_NEUTRAL_HI_S(DLO, DHI) \
 	cpu->cpsr.n = ARM_SIGN(DHI); \
 	cpu->cpsr.z = !((DHI) | (DLO));
 
-//Addressing Mode 2：Load and Store Word or Unsigned Byte
+/*
+注意：
+所有数据加载/存储指令：LDR LDRT LDRB LDRBT LDRH LDRSB LDRSH STR STRT STRB STRBT STRH
+其中涉及半字操作和有符号字节操作的指令(LDRH LDRSH LDRSB STRH)使用3号寻址模式(Addresing Mode 3)
+涉及字和无符号字节操作的指令(LDR LDRT LDRB LDRBT STR STRT STRB STRBT)使用2号寻址模式(Addresing Mode 2)
+
+Addressing Mode 2：Load and Store Word or Unsigned Byte(字和无符号字节加载/存储指令中**偏移量**的寻址模式)
+字和无符号字节加载/存储指令格式：Cond(31-28) 0 1 0/1 P U B W L Rn(19-16) Rd(15-12) **<addressing_mode>(11-0)**
+字和无符号字节加载/存储指令助记符：LDR|STR{<Cond>}{B}{T} <Rd>, <addressing_mode>
+
+关addressing_mode的说明：
+Immediate offset/index：Cond 0 1 0 P U B W L Rn Rd **offset_12**
+Register offset/index： Cond 0 1 1 P U B W L Rn Rd **0 0 0 0 0 0 0 0 Rm**
+Scaled register offset/index：Cond 0 1 1 P U B W L Rn Rd **shift_imm(5) shift(2) 0 Rm**
+*/
 #define ADDR_MODE_2_I_TEST (opcode & 0x00000F80)
 #define ADDR_MODE_2_I ((opcode & 0x00000F80) >> 7)
 #define ADDR_MODE_2_ADDRESS (address)
-#define ADDR_MODE_2_RN (cpu->gprs[rn])
-#define ADDR_MODE_2_RM (cpu->gprs[rm])
+#define ADDR_MODE_2_RN (cpu->gprs[rn])	//第一源操作数
+#define ADDR_MODE_2_RM (cpu->gprs[rm])  //第二源操作数
 #define ADDR_MODE_2_IMMEDIATE (opcode & 0x00000FFF)
 #define ADDR_MODE_2_INDEX(U_OP, M) (cpu->gprs[rn] U_OP M)
 #define ADDR_MODE_2_WRITEBACK(ADDR) (cpu->gprs[rn] = ADDR)
