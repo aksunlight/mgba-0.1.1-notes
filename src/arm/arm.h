@@ -220,19 +220,19 @@ instruction descriptions for any special cases).
 union PSR {
 	struct {	//位域语法：type-specifier declarator(opt):constant-expression
 				//位域用法：冒号后指定域的宽度（以位为单位），位域在表达式中的使用方式与同样基类型使用变量的方式完全相同，无论位域中有多少位
-#if defined(__POWERPC__) || defined(__PPC__)    //PowerPC架构，大端模式
+#if defined(__POWERPC__) || defined(__PPC__)	//PowerPC架构，大端模式
 		//条件标志位(高4位 N,Z,C,V)
-		unsigned n : 1;		//第31位Negative：负数 ? 1 : 0
-		unsigned z : 1;		//第30位Zero：运算结果为0 ? 1 : 0
-		unsigned c : 1;		//第29位Carry：进位标志，加/减法中产生了进/借位则为1
-		unsigned v : 1;		//第28位Overflow：溢出标志，加减法中产生了溢出则为1
-		unsigned : 20;		//第8位到第27位均不用考虑，并不重要
+		unsigned n : 1;					//第31位Negative：负数 ? 1 : 0
+		unsigned z : 1;					//第30位Zero：运算结果为0 ? 1 : 0
+		unsigned c : 1;					//第29位Carry：进位标志，加/减法中产生了进/借位则为1
+		unsigned v : 1;					//第28位Overflow：溢出标志，加减法中产生了溢出则为1
+		unsigned : 20;					//第8位到第27位均不用考虑，并不重要
 		//控制位(低8位 I,F,T,M[4:0]) 当发生异常时, 这些位的值将发生相应的变化, 在特权模式下, 也可以通过软件来修改这些位
-		unsigned i : 1;		//第7位IRQ disable：I=1时IRQ禁止
-		unsigned f : 1;		//第6位FIQ disable：f=1时FIQ禁止
-		enum ExecutionMode t : 1;	//第5位Thumb state bit：t=0时处于ARM状态否则处于Thumb状态
+		unsigned i : 1;					//第7位IRQ disable：I=1时IRQ禁止
+		unsigned f : 1;					//第6位FIQ disable：f=1时FIQ禁止
+		enum ExecutionMode t : 1;		//第5位Thumb state bit：t=0时处于ARM状态否则处于Thumb状态
 		enum PrivilegeMode priv : 5;	//第0位到第4位Mode bit：这5位组合控制处理器处于什么工作模式
-#else	//小端模式
+#else											//小端模式
 		enum PrivilegeMode priv : 5;
 		enum ExecutionMode t : 1;
 		unsigned f : 1;
@@ -248,7 +248,7 @@ union PSR {
 	int32_t packed;
 };
 
-struct ARMMemory {    //ARM内存
+struct ARMMemory {
 	//对应字数据加载指令LDR
 	int32_t (*load32)(struct ARMCore*, uint32_t address, int* cycleCounter);
 	//对应半字数据加载指令LDRH, 目标寄存器高16位清零
@@ -270,26 +270,28 @@ struct ARMMemory {    //ARM内存
 	//对应批量数据存储指令STM
 	uint32_t (*storeMultiple)(struct ARMCore*, uint32_t baseAddress, int mask, enum LSMDirection direction, int* cycleCounter);
 
-	uint32_t* activeRegion;     //当前指令/事件基地址
-	uint32_t activeMask;        //当前指令/事件偏移地址
-	uint32_t activeSeqCycles32; //序列周期数
+	uint32_t* activeRegion;				//当前指令/事件基地址
+	uint32_t activeMask;				//当前指令/事件偏移地址
+	uint32_t activeSeqCycles32;			//序列周期数
 	uint32_t activeSeqCycles16;
-	uint32_t activeNonseqCycles32;	//非序列周期数
+	uint32_t activeNonseqCycles32;		//非序列周期数
 	uint32_t activeNonseqCycles16;
 	uint32_t activeUncachedCycles32;	//未缓存周期数
 	uint32_t activeUncachedCycles16;
-	void (*setActiveRegion)(struct ARMCore*, uint32_t address);		//设置当前指令/事件基地址
+
+	//设置当前指令/事件基地址
+	void (*setActiveRegion)(struct ARMCore*, uint32_t address);
 };
 
-struct ARMInterruptHandler {    //ARM中断处理程序
-	void (*reset)(struct ARMCore* cpu);       //复位异常
-	void (*processEvents)(struct ARMCore* cpu);     //FIQ、IRQ硬件中断
-	void (*swi16)(struct ARMCore* cpu, int immediate);	//16位软中断
-	void (*swi32)(struct ARMCore* cpu, int immediate);	//32位软中断
-	void (*hitIllegal)(struct ARMCore* cpu, uint32_t opcode);    //未定义指令异常
-	void (*readCPSR)(struct ARMCore* cpu);    //读当前程序状态寄存器	
+struct ARMInterruptHandler {									//ARM中断处理程序
+	void (*reset)(struct ARMCore* cpu);							//复位异常
+	void (*processEvents)(struct ARMCore* cpu);					//FIQ、IRQ硬件中断
+	void (*swi16)(struct ARMCore* cpu, int immediate);			//16位软中断
+	void (*swi32)(struct ARMCore* cpu, int immediate);			//32位软中断
+	void (*hitIllegal)(struct ARMCore* cpu, uint32_t opcode);	//未定义指令异常
+	void (*readCPSR)(struct ARMCore* cpu);						//读当前程序状态寄存器	
 
-	void (*hitStub)(struct ARMCore* cpu, uint32_t opcode);    //指令预取中止异常、数据中止异常
+	void (*hitStub)(struct ARMCore* cpu, uint32_t opcode);		//指令预取中止异常、数据中止异常
 };
 
 struct ARMComponent {        //ARM进程？
@@ -298,44 +300,44 @@ struct ARMComponent {        //ARM进程？
 	void (*deinit)(struct ARMComponent* component);
 };
 
-struct ARMCore {        //ARM核心
-	int32_t gprs[16];   //当前16个32位的寄存器（R0到R15）
-	union PSR cpsr;     //当前程序状态寄存器
-	union PSR spsr;     //保存的程序状态寄存器
+struct ARMCore {		//ARM核心
+	int32_t gprs[16];	//当前16个32位的寄存器（R0到R15）
+	union PSR cpsr;		//当前程序状态寄存器
+	union PSR spsr;		//保存的程序状态寄存器
 
-	int32_t cycles;     //时钟周期数
-	int32_t nextEvent;  //直到完成下一条指令/事件的所有时钟周期数？指令周期数？机器周期数？
-	int halted;    //停止
+	int32_t cycles;		//时钟周期数
+	int32_t nextEvent;	//直到完成下一条指令/事件的所有时钟周期数？指令周期数？机器周期数？
+	int halted;			//停止
 
-	int32_t bankedRegisters[6][7];  //备份寄存器组，存储不同工作模式下每种工作模式的bankedRegisters，
-	int32_t bankedSPSRs[6];     //SPSR寄存器组，存储不同工作模式下每种工作模式下的SPSR
+	int32_t bankedRegisters[6][7];		//备份寄存器组，存储不同工作模式下每种工作模式的bankedRegisters，
+	int32_t bankedSPSRs[6];				//SPSR寄存器组，存储不同工作模式下每种工作模式下的SPSR
 
-	int32_t shifterOperand;     //数据处理指令第二源操作数的值
-	int32_t shifterCarryOut;    //数据处理指令带来的C标志位的新值
+	int32_t shifterOperand;				//数据处理指令第二源操作数的值
+	int32_t shifterCarryOut;			//数据处理指令带来的C标志位的新值
 
-	uint32_t prefetch;              //预取指令
-	enum ExecutionMode executionMode;   //当前工作状态
-	enum PrivilegeMode privilegeMode;   //当前工作模式
+	uint32_t prefetch;					//预取指令
+	enum ExecutionMode executionMode;	//当前工作状态
+	enum PrivilegeMode privilegeMode;	//当前工作模式
 
-	struct ARMMemory memory;            //内存	
-	struct ARMInterruptHandler irqh;    //中断句柄
+	struct ARMMemory memory;			//内存	
+	struct ARMInterruptHandler irqh;	//中断句柄
 
-	struct ARMComponent* master;    //主进程？
+	struct ARMComponent* master;		//主进程？
 
-	int numComponents;      //其他进程？
+	int numComponents;					//其他进程？
 	struct ARMComponent** components;	
 };
 
-void ARMInit(struct ARMCore* cpu);      //初始化
-void ARMDeinit(struct ARMCore* cpu);    //另一种初始化方式
+void ARMInit(struct ARMCore* cpu);		//初始化
+void ARMDeinit(struct ARMCore* cpu);	//另一种初始化方式
 void ARMSetComponents(struct ARMCore* cpu, struct ARMComponent* master, int extra, struct ARMComponent** extras);	//设置进程？
 
-void ARMReset(struct ARMCore* cpu);     //重置
-void ARMSetPrivilegeMode(struct ARMCore*, enum PrivilegeMode);  //设置工作模式
-void ARMRaiseIRQ(struct ARMCore*);      //拉起普通中断
-void ARMRaiseSWI(struct ARMCore*);      //拉起软中断
+void ARMReset(struct ARMCore* cpu);		//重置
+void ARMSetPrivilegeMode(struct ARMCore*, enum PrivilegeMode);	//设置工作模式
+void ARMRaiseIRQ(struct ARMCore*);		//拉起普通中断
+void ARMRaiseSWI(struct ARMCore*);		//拉起软中断
 
-void ARMRun(struct ARMCore* cpu);       //单步运行
-void ARMRunLoop(struct ARMCore* cpu);   //循环运行
+void ARMRun(struct ARMCore* cpu);		//单步运行
+void ARMRunLoop(struct ARMCore* cpu);	//循环运行
 
 #endif

@@ -351,11 +351,13 @@ DB(Decrement before)：        Cond 1 0 0 1 0 S W L Rn register-list
 #define ADDR_MODE_3_INDEX(U_OP, M) ADDR_MODE_2_INDEX(U_OP, M)
 #define ADDR_MODE_3_WRITEBACK(ADDR) ADDR_MODE_2_WRITEBACK(ADDR)
 
+//LDM指令带写回(更新基址寄存器Rn)
 #define ADDR_MODE_4_WRITEBACK_LDM \
 		if (!((1 << rn) & rs)) { \
 			cpu->gprs[rn] = address; \
 		}
 
+//STM指令带写回(更新基址寄存器Rn)
 #define ADDR_MODE_4_WRITEBACK_STM cpu->gprs[rn] = address;
 
 #define ARM_LOAD_POST_BODY \
