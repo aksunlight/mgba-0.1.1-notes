@@ -8,7 +8,7 @@
 #include "decoder-inlines.h"
 #include "emitter-arm.h"
 #include "isa-inlines.h"
-
+ 
 #define ADDR_MODE_1_SHIFT(OP) \
 	info->op3.reg = opcode & 0x0000000F; \
 	info->op3.shifterOp = ARM_SHIFT_ ## OP; \
