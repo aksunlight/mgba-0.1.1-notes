@@ -285,13 +285,17 @@ Addressing Mode 3：Load and store halfword or load signed byte(半字和有符�
 			[<Rn>], #+/-<offset_12>
 			[<Rn>], +/-<Rm>
 			[<Rn>], +/-<Rm>, <shift> #<shift_imm>
+注意：对于前三种有!则更新基址寄存器Rn的值(带写回)，无!则不更新Rn(不带写回)，后三种会更新Rn的值
+	 前三种先计算出地址再用它来跟新Rn(pre-index)，后三种先使用Rn作为地址再给Rn计算新的地址(post-index)
+	 LDRBT, LDRT, STRBT, and STRT only support post-indexed addressing modes.(带T的仅支持后三种)
+
 半字和有符号字节加载/存储指令助记符：LDR|STR{<Cond>}H|SH|SB|D <Rd>, <addressing_mode>
 <addressing_mode>具体形式如下：
 			[<Rn>, #+/-<offset_8>]{!}
 			[<Rn>, +/-<Rm>]{!}
 			[<Rn>], #+/-<offset_8>
 			[<Rn>], +/-<Rm>
-注意：有!表示更新基址寄存器Rn(带写回)的值，无!则不更新Rn(不带写回)
+注意事项同上，只是少了几种寻址方式
 
 字和无符号字节加载/存储指令格式：Cond(31-28) 0 1 0/1 P U B W L Rn(19-16) Rd(15-12) **addressing_mode(11-0)**
 对于不同addressing_mode，指令编码如下：
@@ -322,7 +326,7 @@ Addressing Mode 4：Load and Store Multiple(加载/存储多个指令中**基址
 			IB (Increment Before)
 			DA (Decrement After)
 			DB (Decrement Before)
-注意：有!表示更新基址寄存器Rn(带写回)的值，无!则不更新Rn(不带写回)
+注意：有!表示更新基址寄存器Rn的值(将最后的地址写入)，无!则不更新Rn(不带写回)
 
 加载/存储多个指令格式：Cond 1 0 0 P U S W L Rn register-list(16)
 对于不同addressing_mode，指令编码如下：
