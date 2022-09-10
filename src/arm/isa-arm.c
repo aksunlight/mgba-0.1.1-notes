@@ -230,7 +230,7 @@ static inline void _immediate(struct ARMCore* cpu, uint32_t opcode) {
 //设置了S标志将更新CPSR中相应的条件标志位，如果目的寄存器又是R15(PC)
 //还会将当前模式的SPSR恢复到CPSR中(该指令的运算结果并不影响CPSR的标志位)
 
-//设置了S标志位的加法指令
+//设置了S标志位的数据处理指令
 #define ARM_ADDITION_S(M, N, D) \
 	if (rd == ARM_PC && _ARMModeHasSPSR(cpu->cpsr.priv)) { \
 		cpu->cpsr = cpu->spsr; \
@@ -402,7 +402,8 @@ static void _ARMInstruction ## NAME (struct ARMCore* cpu, uint32_t opcode) {
 		cpu->cycles += currentCycles;
 	}
 */
-//算数逻辑指令需要在ARM指令宏上扩展
+//算数逻辑指令需要在ARM指令宏上扩展,
+//数据处理指令格式：Cond(31-28) 0 0 0/1 Opcode(24-21) S(20) Rn(19-16) Rd(15-12) **Operand2(11-0)**
 #define DEFINE_ALU_INSTRUCTION_EX_ARM(NAME, S_BODY, SHIFTER, BODY) \
 	DEFINE_INSTRUCTION_ARM(NAME, \
 		int rd = (opcode >> 12) & 0xF; \
@@ -525,7 +526,42 @@ static void _ARMInstruction ## NAME (struct ARMCore* cpu, uint32_t opcode) {
 		if (rd == ARM_PC) { \
 			ARM_WRITE_PC; \
 		})
-
+/*
+宏定义：DEFINE_MULTIPLY_INSTRUCTION_ARM(NAME, BODY, S_BODY)
+替换文本：
+**DEFINE_MULTIPLY_INSTRUCTION_EX_ARM(NAME, BODY, )**
+static void _ARMInstruction ## NAME (struct ARMCore* cpu, uint32_t opcode) {
+		int currentCycles = ARM_PREFETCH_CYCLES;
+		int rd = (opcode >> 12) & 0xF;
+		int rdHi = (opcode >> 16) & 0xF;
+		int rs = (opcode >> 8) & 0xF;
+		int rm = opcode & 0xF;
+		UNUSED(rdHi);
+		ARM_WAIT_MUL(cpu->gprs[rs]);
+		BODY;
+		;
+		if (rd == ARM_PC) {
+			ARM_WRITE_PC;
+		}
+		cpu->cycles += currentCycles;
+	}
+**DEFINE_MULTIPLY_INSTRUCTION_EX_ARM(NAME ## S, BODY, S_BODY)**
+static void _ARMInstruction ## NAME ## S (struct ARMCore* cpu, uint32_t opcode) {
+		int currentCycles = ARM_PREFETCH_CYCLES;
+		int rd = (opcode >> 12) & 0xF;
+		int rdHi = (opcode >> 16) & 0xF;
+		int rs = (opcode >> 8) & 0xF;
+		int rm = opcode & 0xF;
+		UNUSED(rdHi);
+		ARM_WAIT_MUL(cpu->gprs[rs]);
+		BODY;
+		S_BODY;
+		if (rd == ARM_PC) {
+			ARM_WRITE_PC;
+		}
+		cpu->cycles += currentCycles;
+	}
+*/
 //定义乘法运算指令的宏
 #define DEFINE_MULTIPLY_INSTRUCTION_ARM(NAME, BODY, S_BODY) \
 	DEFINE_MULTIPLY_INSTRUCTION_EX_ARM(NAME, BODY, ) \
@@ -612,6 +648,18 @@ static void _ARMInstruction ## NAME (struct ARMCore* cpu, uint32_t opcode) {
 
 #define ARM_MS_POST ARMSetPrivilegeMode(cpu, privilegeMode);
 
+/*0.9.3
+#define ARM_MS_PRE_store \
+	enum PrivilegeMode privilegeMode = cpu->privilegeMode; \
+	ARMSetPrivilegeMode(cpu, MODE_SYSTEM);
+
+#define ARM_MS_PRE_load \
+	enum PrivilegeMode privilegeMode; \
+	if (!(rs & 0x8000) && rs) { \
+		privilegeMode = cpu->privilegeMode; \
+		ARMSetPrivilegeMode(cpu, MODE_SYSTEM); \
+	}
+*/
 /*
 宏定义：DEFINE_LOAD_STORE_MULTIPLE_INSTRUCTION_EX_ARM(NAME, LS, WRITEBACK, S_PRE, S_POST, DIRECTION, POST_BODY)
 替换文本：
@@ -664,6 +712,53 @@ static void _ARMInstruction ## NAME (struct ARMCore* cpu, uint32_t opcode) {
    Arithmetic: ADD ADC SUB SBC RSB RSC CMP CMN
       Logical: AND EOR ORR BIC TST TEQ
          Move: MOV MVN
+*/
+/* 原宏定义：DEFINE_ALU_INSTRUCTION_ARM(NAME, S_BODY, BODY)
+	DEFINE_ALU_INSTRUCTION_ARM(ADD, ARM_ADDITION_S(n, cpu->shifterOperand, cpu->gprs[rd]),
+			int32_t n = cpu->gprs[rn];
+			cpu->gprs[rd] = n + cpu->shifterOperand;)
+展开为：
+**DEFINE_ALU_INSTRUCTION_EX_ARM(ADD ## _LSL, , _shiftLSL, int32_t n = cpu->gprs[rn]; cpu->gprs[rd] = n + cpu->shifterOperand;)**
+static void _ARMInstruction ## ADD ## _LSL (struct ARMCore* cpu, uint32_t opcode) {
+		int currentCycles = ARM_PREFETCH_CYCLES;
+		int rd = (opcode >> 12) & 0xF;
+		int rn = (opcode >> 16) & 0xF;
+		UNUSED(rn);
+		_shiftLSL(cpu, opcode);
+		int32_t n = cpu->gprs[rn]; 
+		cpu->gprs[rd] = n + cpu->shifterOperand;;
+		;
+		if (rd == ARM_PC) {
+			if (cpu->executionMode == MODE_ARM) {
+				ARM_WRITE_PC;
+			} else {
+				THUMB_WRITE_PC;
+			}
+		}
+		cpu->cycles += currentCycles;
+	}
+**DEFINE_ALU_INSTRUCTION_EX_ARM(ADD ## S_LSL, ARM_ADDITION_S(n, cpu->shifterOperand, cpu->gprs[rd]), _shiftLSL, 
+								int32_t n = cpu->gprs[rn];
+	                            cpu->gprs[rd] = n + cpu->shifterOperand;)**
+static void _ARMInstruction ## ADD ## S_LSL (struct ARMCore* cpu, uint32_t opcode) {
+		int currentCycles = ARM_PREFETCH_CYCLES;
+		int rd = (opcode >> 12) & 0xF;
+		int rn = (opcode >> 16) & 0xF;
+		UNUSED(rn);
+		_shiftLSL(cpu, opcode);
+		int32_t n = cpu->gprs[rn];
+	    cpu->gprs[rd] = n + cpu->shifterOperand;;
+		ARM_ADDITION_S(n, cpu->shifterOperand, cpu->gprs[rd]);;
+		if (rd == ARM_PC) {
+			if (cpu->executionMode == MODE_ARM) {
+				ARM_WRITE_PC;
+			} else {
+				THUMB_WRITE_PC;
+			}
+		}
+		cpu->cycles += currentCycles;
+	}
+	......
 */
 DEFINE_ALU_INSTRUCTION_ARM(ADD, ARM_ADDITION_S(n, cpu->shifterOperand, cpu->gprs[rd]),
 	int32_t n = cpu->gprs[rn];
@@ -730,6 +825,43 @@ DEFINE_ALU_INSTRUCTION_S_ONLY_ARM(TST, ARM_NEUTRAL_S(cpu->gprs[rn], cpu->shifter
    UMLAL: Multiply unsigned accumulate long
    SMULL: Multiply signed long
    SMLAL: Multiply signed accumulate long
+*/
+/*
+原宏定义：DEFINE_MULTIPLY_INSTRUCTION_ARM(NAME, BODY, S_BODY)
+DEFINE_MULTIPLY_INSTRUCTION_ARM(MLA, cpu->gprs[rdHi] = cpu->gprs[rm] * cpu->gprs[rs] + cpu->gprs[rd], ARM_NEUTRAL_S(, , cpu->gprs[rdHi]))
+替换文本：
+**DEFINE_MULTIPLY_INSTRUCTION_EX_ARM(NAME, BODY, )**
+static void _ARMInstruction ## MLA (struct ARMCore* cpu, uint32_t opcode) {
+		int currentCycles = ARM_PREFETCH_CYCLES;
+		int rd = (opcode >> 12) & 0xF;
+		int rdHi = (opcode >> 16) & 0xF;
+		int rs = (opcode >> 8) & 0xF;
+		int rm = opcode & 0xF;
+		UNUSED(rdHi);
+		ARM_WAIT_MUL(cpu->gprs[rs]);
+		cpu->gprs[rdHi] = cpu->gprs[rm] * cpu->gprs[rs] + cpu->gprs[rd];
+		;
+		if (rd == ARM_PC) {
+			ARM_WRITE_PC;
+		}
+		cpu->cycles += currentCycles;
+	}
+**DEFINE_MULTIPLY_INSTRUCTION_EX_ARM(MLA ## S, BODY, S_BODY)**
+static void _ARMInstruction ## MLA ## S (struct ARMCore* cpu, uint32_t opcode) {
+		int currentCycles = ARM_PREFETCH_CYCLES;
+		int rd = (opcode >> 12) & 0xF;
+		int rdHi = (opcode >> 16) & 0xF;
+		int rs = (opcode >> 8) & 0xF;
+		int rm = opcode & 0xF;
+		UNUSED(rdHi);
+		ARM_WAIT_MUL(cpu->gprs[rs]);
+		cpu->gprs[rdHi] = cpu->gprs[rm] * cpu->gprs[rs] + cpu->gprs[rd];
+		ARM_NEUTRAL_S(, , cpu->gprs[rdHi]);
+		if (rd == ARM_PC) {
+			ARM_WRITE_PC;
+		}
+		cpu->cycles += currentCycles;
+	}
 */
 DEFINE_MULTIPLY_INSTRUCTION_ARM(MLA, cpu->gprs[rdHi] = cpu->gprs[rm] * cpu->gprs[rs] + cpu->gprs[rd], ARM_NEUTRAL_S(, , cpu->gprs[rdHi]))
 DEFINE_MULTIPLY_INSTRUCTION_ARM(MUL, cpu->gprs[rdHi] = cpu->gprs[rm] * cpu->gprs[rs], ARM_NEUTRAL_S(cpu->gprs[rm], cpu->gprs[rs], cpu->gprs[rdHi]))
