@@ -8,13 +8,6 @@
 #define ARM_DECODER_H
 
 #include "arm.h"
-//operand 操作数    opcode 操作码    operation 操作
-// Bit 0: a register is involved with this operand这个操作数涉及一个寄存器，意思就是操作数从寄存器中取
-// Bit 1: an immediate is invovled with this operand这个操作数涉及一个立即数，意思就是操作数就是立即数
-// Bit 2: a memory access is invovled with this operand这个操作数涉及一块内存访问，意思就是操作数从内存中取
-// Bit 3: the destination of this operand is affected by this opcode操作码不同操作数也从不同地方取
-// Bit 4: this operand is shifted by a register这个操作数被一个寄存器改变
-// Bit 5: this operand is shifted by an immediate这个操作数被被一个立即数改变
 #define ARM_OPERAND_NONE                0x00000000	//指令没有操作数
 #define ARM_OPERAND_REGISTER_1          0x00000001  //指令有一个寄存器操作数
 #define ARM_OPERAND_IMMEDIATE_1         0x00000002	//指令有一个立即数操作数
