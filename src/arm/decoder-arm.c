@@ -98,6 +98,32 @@
 		BODY; \
 	}
 
+/*
+宏定义：DEFINE_ALU_DECODER_EX_ARM(NAME, MNEMONIC, S, SHIFTER, OTHER_AFFECTED, SKIPPED)
+宏扩展为：
+	static void _ARMDecode ## NAME (uint32_t opcode, struct ARMInstructionInfo* info) { \
+		UNUSED(opcode); \
+		info->mnemonic = ARM_MN_ ## MNEMONIC; \
+
+		info->op1.reg = (opcode >> 12) & 0xF; \
+		info->op2.reg = (opcode >> 16) & 0xF; \
+		info->operandFormat = ARM_OPERAND_REGISTER_1 | \
+			OTHER_AFFECTED | \
+			ARM_OPERAND_REGISTER_2; \
+		info->affectsCPSR = S; \
+		SHIFTER; \
+		if (SKIPPED == 1) { \
+			info->operandFormat >>= 8; \
+			info->op1 = info->op2; \
+			info->op2 = info->op3; \
+		} else if (SKIPPED == 2) { \
+			info->operandFormat &= ~ARM_OPERAND_2; \
+		} \
+		if (info->op1.reg == ARM_PC) { \
+			info->branchType = ARM_BRANCH_INDIRECT; \
+		}; \
+	}
+*/
 #define DEFINE_ALU_DECODER_EX_ARM(NAME, MNEMONIC, S, SHIFTER, OTHER_AFFECTED, SKIPPED) \
 	DEFINE_DECODER_ARM(NAME, MNEMONIC, \
 		info->op1.reg = (opcode >> 12) & 0xF; \
@@ -117,7 +143,36 @@
 		if (info->op1.reg == ARM_PC) { \
 			info->branchType = ARM_BRANCH_INDIRECT; \
 		})
+/*
+宏定义：DEFINE_ALU_DECODER_ARM(NAME, SKIPPED)
+宏扩展为：
+	......
+	**DEFINE_ALU_DECODER_EX_ARM(NAME ## _LSL, NAME, 0, ADDR_MODE_1_LSL, ARM_OPERAND_AFFECTED_1, SKIPPED)**
 
+	static void _ARMDecode ## NAME ## _LSL (uint32_t opcode, struct ARMInstructionInfo* info) { \
+		UNUSED(opcode); \
+		info->mnemonic = ARM_MN_ ## NAME; \
+		
+		info->op1.reg = (opcode >> 12) & 0xF; \
+		info->op2.reg = (opcode >> 16) & 0xF; \
+		info->operandFormat = ARM_OPERAND_REGISTER_1 | \
+			ARM_OPERAND_AFFECTED_1 | \
+			ARM_OPERAND_REGISTER_2; \
+		info->affectsCPSR = 0; \
+		ADDR_MODE_1_LSL; \
+		if (SKIPPED == 1) { \
+			info->operandFormat >>= 8; \
+			info->op1 = info->op2; \
+			info->op2 = info->op3; \
+		} else if (SKIPPED == 2) { \
+			info->operandFormat &= ~ARM_OPERAND_2; \
+		} \
+		if (info->op1.reg == ARM_PC) { \
+			info->branchType = ARM_BRANCH_INDIRECT; \
+		}; \
+	}
+	......
+*/
 #define DEFINE_ALU_DECODER_ARM(NAME, SKIPPED) \
 	DEFINE_ALU_DECODER_EX_ARM(NAME ## _LSL, NAME, 0, ADDR_MODE_1_LSL, ARM_OPERAND_AFFECTED_1, SKIPPED) \
 	DEFINE_ALU_DECODER_EX_ARM(NAME ## S_LSL, NAME, 1, ADDR_MODE_1_LSL, ARM_OPERAND_AFFECTED_1, SKIPPED) \
@@ -299,6 +354,36 @@
 		info->memory.format = ARM_MEMORY_REGISTER_BASE; \
 		info->memory.width = TYPE;)
 
+/*
+宏定义：DEFINE_ALU_DECODER_ARM(NAME, SKIPPED)	DEFINE_ALU_DECODER_ARM(ADD, 0)
+宏扩展为：
+	......
+	**DEFINE_ALU_DECODER_EX_ARM(ADD ## _LSL, ADD, 0, ADDR_MODE_1_LSL, ARM_OPERAND_AFFECTED_1, 0)**
+
+	static void _ARMDecode ## ADD ## _LSL (uint32_t opcode, struct ARMInstructionInfo* info) { \
+		UNUSED(opcode); \
+		info->mnemonic = ARM_MN_ ## ADD; \
+		
+		info->op1.reg = (opcode >> 12) & 0xF; \
+		info->op2.reg = (opcode >> 16) & 0xF; \
+		info->operandFormat = ARM_OPERAND_REGISTER_1 | \
+			ARM_OPERAND_AFFECTED_1 | \
+			ARM_OPERAND_REGISTER_2; \
+		info->affectsCPSR = 0; \
+		ADDR_MODE_1_LSL; \
+		if (0 == 1) { \
+			info->operandFormat >>= 8; \
+			info->op1 = info->op2; \
+			info->op2 = info->op3; \
+		} else if (0 == 2) { \
+			info->operandFormat &= ~ARM_OPERAND_2; \
+		} \
+		if (info->op1.reg == ARM_PC) { \
+			info->branchType = ARM_BRANCH_INDIRECT; \
+		}; \
+	}
+	......
+*/
 DEFINE_ALU_DECODER_ARM(ADD, 0)
 DEFINE_ALU_DECODER_ARM(ADC, 0)
 DEFINE_ALU_DECODER_ARM(AND, 0)

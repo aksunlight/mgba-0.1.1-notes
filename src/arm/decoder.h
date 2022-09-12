@@ -88,44 +88,51 @@ enum ARMShifterOperation {
 	ARM_SHIFT_RRX
 };
 
-//指令第二操作数Op2
+/*
+数据处理指令第二操作数Op2
+数据处理指令格式：Cond(31-28) 0 0 0/1 Opcode(24-21) S(20) Rn(19-16) Rd(15-12) **Operand2(11-0)**
+对于不同Operand2，指令编码如下：
+32-bit immediate：cond 0 0 1 opcode S Rn Rd **rotate_imm(4) immed_8**
+Immediate shifts：cond 0 0 0 opcode S Rn Rd **shift_imm(5) shift(2) 0 Rm**
+Register shifts： cond 0 0 0 opcode S Rn Rd **Rs 0 shift(2) 1 Rm**
+*/
 union ARMOperand {
 	struct {
-		uint8_t reg;	//2st operand register，operand 2 is a register
-		uint8_t shifterOp;	//Shift域中的移位模式，从ARMShifterOperation中取值
+		uint8_t reg;
+		uint8_t shifterOp;
 		union {
-			uint8_t shifterReg;	//shift域中表示移位数的寄存器
-			uint8_t shifterImm;	//shift域中表示移位数的立即数
+			uint8_t shifterReg;
+			uint8_t shifterImm;
 		};
 	};
-	int32_t immediate;	//2st operand immediate，operand 2 is a immediate
+	int32_t immediate;
 };
 
-enum ARMMemoryAccessType {		//内存访问类型
-	ARM_ACCESS_WORD = 4,		//字类型，4字节
-	ARM_ACCESS_HALFWORD = 2,	//半字类型，2字节
+enum ARMMemoryAccessType {				//内存访问类型
+	ARM_ACCESS_WORD = 4,				//字类型，4字节
+	ARM_ACCESS_HALFWORD = 2,			//半字类型，2字节
 	ARM_ACCESS_SIGNED_HALFWORD = 10,	//有符号半字
-	ARM_ACCESS_BYTE = 1,	//字节
-	ARM_ACCESS_SIGNED_BYTE = 9,		//有符号字节
+	ARM_ACCESS_BYTE = 1,				//字节
+	ARM_ACCESS_SIGNED_BYTE = 9,			//有符号字节
 	ARM_ACCESS_TRANSLATED_WORD = 20,
 	ARM_ACCESS_TRANSLATED_BYTE = 17
 };
 
-enum ARMBranchType {		//ARM分支类型，跳转的类型
-	ARM_BRANCH_NONE = 0,	//不跳转
-	ARM_BRANCH = 1,			//普通跳转
+enum ARMBranchType {			//ARM分支类型，跳转的类型
+	ARM_BRANCH_NONE = 0,		//不跳转
+	ARM_BRANCH = 1,				//普通跳转
 	ARM_BRANCH_INDIRECT = 2,	//间接跳转？
 	ARM_BRANCH_LINKED = 4		//连接跳转？
 };
 
-struct ARMMemoryAccess {	//ARM内存访问
-	uint8_t baseReg;	//基址
-	uint8_t width;		//大小
-	uint16_t format;	//形式
+struct ARMMemoryAccess {		//ARM内存访问
+	uint8_t baseReg;			//基址
+	uint8_t width;				//位宽
+	uint16_t format;			//形式
 	union ARMOperand offset;	//偏移量
 };
 
-enum ARMMnemonic {		//ARM操作码（助记符）
+enum ARMMnemonic {				//ARM操作码（助记符）
 	ARM_MN_ILL = 0,
 	ARM_MN_ADC,
 	ARM_MN_ADD,
@@ -198,8 +205,8 @@ struct ARMInstructionInfo {		//指令信息
 	unsigned nDataCycles : 10;
 };
 
-void ARMDecodeARM(uint32_t opcode, struct ARMInstructionInfo* info);	//解码32位指令
-void ARMDecodeThumb(uint16_t opcode, struct ARMInstructionInfo* info);	//解码16位指令
-int ARMDisassemble(struct ARMInstructionInfo* info, uint32_t pc, char* buffer, int blen);	//解码指令
+void ARMDecodeARM(uint32_t opcode, struct ARMInstructionInfo* info);						//解码32ARM位指令
+void ARMDecodeThumb(uint16_t opcode, struct ARMInstructionInfo* info);						//解码16THUMB位指令
+int ARMDisassemble(struct ARMInstructionInfo* info, uint32_t pc, char* buffer, int blen);	//反汇编
 
 #endif

@@ -1082,3 +1082,45 @@ DEFINE_INSTRUCTION_ARM(SWI, cpu->irqh.swi32(cpu, opcode & 0xFFFFFF))
 const ARMInstruction _armTable[0x1000] = {
 	DECLARE_ARM_EMITTER_BLOCK(_ARMInstruction)
 };
+/*
+DECLARE_ARM_EMITTER_BLOCK(_ARMInstruction)
+扩展为：
+    ......
+    _ARMInstructionADD_LSL
+	_ARMInstructionADD_LSLR
+	_ARMInstructionADD_LSR
+	_ARMInstructionADD_LSRR
+	_ARMInstructionADD_ASR
+	_ARMInstructionADD_ASRR
+	_ARMInstructionADD_ROR
+	_ARMInstructionADD_RORR
+	_ARMInstructionADD_LSL
+	_ARMInstructionUMULL
+	_ARMInstructionADD_LSR
+	_ARMInstructionSTRHU
+	_ARMInstructionADD_ASR
+	_ARMInstructionILL
+	_ARMInstructionADD_ROR
+	_ARMInstructionILL
+    ......
+
+具体执行的指令函数：
+static void _ARMInstruction ## ADD ## _LSL (struct ARMCore* cpu, uint32_t opcode) {
+		int currentCycles = ARM_PREFETCH_CYCLES;
+		int rd = (opcode >> 12) & 0xF;
+		int rn = (opcode >> 16) & 0xF;
+		UNUSED(rn);
+		_shiftLSL(cpu, opcode);
+		int32_t n = cpu->gprs[rn]; 
+		cpu->gprs[rd] = n + cpu->shifterOperand;;
+		;
+		if (rd == ARM_PC) {
+			if (cpu->executionMode == MODE_ARM) {
+				ARM_WRITE_PC;
+			} else {
+				THUMB_WRITE_PC;
+			}
+		}
+		cpu->cycles += currentCycles;
+	}
+*/
