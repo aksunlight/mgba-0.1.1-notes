@@ -287,7 +287,7 @@ void ARMRun(struct ARMCore* cpu) {
 	}
 }
 
-//顺序执行指令
+//指令循环
 void ARMRunLoop(struct ARMCore* cpu) {
 	if (cpu->executionMode == MODE_THUMB) {
 		while (cpu->cycles < cpu->nextEvent) {
