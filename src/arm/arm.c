@@ -205,7 +205,10 @@ Operand2：第二个操作数，它可以是立即数An immediate value，可以
 //ARM处理器指令执行步骤
 static inline void ARMStep(struct ARMCore* cpu) {
 	uint32_t opcode = cpu->prefetch;
+
 	LOAD_32(cpu->prefetch, cpu->gprs[ARM_PC] & cpu->memory.activeMask, cpu->memory.activeRegion);
+	//展开为：cpu->prefetch = ((uint32_t*) cpu->memory.activeRegion)[(cpu->gprs[ARM_PC] & cpu->memory.activeMask) >> 2]
+	
 	cpu->gprs[ARM_PC] += WORD_SIZE_ARM;
 
 	unsigned condition = opcode >> 28;
@@ -275,7 +278,7 @@ static inline void ThumbStep(struct ARMCore* cpu) {
 	instruction(cpu, opcode);
 }
 
-//运行一条指令
+//处理器启动运行
 void ARMRun(struct ARMCore* cpu) {
 	if (cpu->executionMode == MODE_THUMB) {
 		ThumbStep(cpu);
