@@ -208,7 +208,7 @@ static inline void ARMStep(struct ARMCore* cpu) {
 
 	LOAD_32(cpu->prefetch, cpu->gprs[ARM_PC] & cpu->memory.activeMask, cpu->memory.activeRegion);
 	//展开为：cpu->prefetch = ((uint32_t*) cpu->memory.activeRegion)[(cpu->gprs[ARM_PC] & cpu->memory.activeMask) >> 2]
-	
+
 	cpu->gprs[ARM_PC] += WORD_SIZE_ARM;
 
 	unsigned condition = opcode >> 28;
@@ -265,6 +265,7 @@ static inline void ARMStep(struct ARMCore* cpu) {
 			return;
 		}
 	}
+	// 								_armTable[ [27-25][24-21][20]0000  |  00000000[7-4] ] = _armTable[ [27-25][24-21][20][7-4] ]
 	ARMInstruction instruction = _armTable[((opcode >> 16) & 0xFF0) | ((opcode >> 4) & 0x00F)];
 	instruction(cpu, opcode);
 }

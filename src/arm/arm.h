@@ -294,7 +294,7 @@ struct ARMInterruptHandler {									//ARM中断处理程序
 	void (*hitStub)(struct ARMCore* cpu, uint32_t opcode);		//指令预取中止异常、数据中止异常
 };
 
-struct ARMComponent {        //ARM进程？
+struct ARMComponent {	//ARM进程？
 	uint32_t id;
 	void (*init)(struct ARMCore* cpu, struct ARMComponent* component);
 	void (*deinit)(struct ARMComponent* component);
