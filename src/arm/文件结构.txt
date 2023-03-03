@@ -23,6 +23,103 @@ emitter-inlines.h  emitter-arm.h  emitter-thumb.h
 
 
 
+ARM指令解码：翻译二进制机器指令，根据翻译结果找到对应的C函数（指令函数）
+decoder.h
+struct ARMInstructionInfo {		//保存指令信息：将32位二进制机器码的信息提取到该结构体
+	uint32_t opcode;
+	union ARMOperand op1;
+	union ARMOperand op2;
+	union ARMOperand op3;
+	union ARMOperand op4;
+	struct ARMMemoryAccess memory;
+	int operandFormat;
+	unsigned execMode : 1;
+	bool traps : 1;
+	bool affectsCPSR : 1;
+	unsigned branchType : 3;
+	unsigned condition : 4;
+	unsigned mnemonic : 6;
+	unsigned iCycles : 3;
+	unsigned cCycles : 4;
+	unsigned sInstructionCycles : 4;
+	unsigned nInstructionCycles : 4;
+	unsigned sDataCycles : 10;
+	unsigned nDataCycles : 10;
+};
+void ARMDecodeARM(uint32_t opcode, struct ARMInstructionInfo* info);
+void ARMDecodeThumb(uint16_t opcode, struct ARMInstructionInfo* info);
+
+decoder-arm.c
+typedef void (*ARMDecoder)(uint32_t opcode, struct ARMInstructionInfo* info);
+
+static const ARMDecoder _armDecoderTable[0x1000] = {
+	DECLARE_ARM_EMITTER_BLOCK(_ARMDecode)
+};
+
+DECLARE_ARM_EMITTER_BLOCK(_ARMDecode)
+扩展为：
+    ......
+    _ARMDecodeADD_LSL
+	_ARMDecodeADD_LSLR
+	_ARMDecodeADD_LSR
+	_ARMDecodeADD_LSRR
+	_ARMDecodeADD_ASR
+	_ARMDecodeADD_ASRR
+	_ARMDecodeADD_ROR
+	_ARMDecodeADD_RORR
+	_ARMDecodeADD_LSL
+	_ARMDecodeUMULL
+	_ARMDecodeADD_LSR
+	_ARMDecodeSTRHU
+	_ARMDecodeADD_ASR
+	_ARMDecodeILL
+	_ARMDecodeADD_ROR
+	_ARMDecodeILL
+    ......
+
+static void _ARMDecode ## ADD ## _LSL (uint32_t opcode, struct ARMInstructionInfo* info) { \
+		UNUSED(opcode); \
+		info->mnemonic = ARM_MN_ ## ADD; \
+		
+		info->op1.reg = (opcode >> 12) & 0xF; \
+		info->op2.reg = (opcode >> 16) & 0xF; \
+		info->operandFormat = ARM_OPERAND_REGISTER_1 | \
+			ARM_OPERAND_AFFECTED_1 | \
+			ARM_OPERAND_REGISTER_2; \
+		info->affectsCPSR = 0; \
+		ADDR_MODE_1_LSL; \
+		if (0 == 1) { \
+			info->operandFormat >>= 8; \
+			info->op1 = info->op2; \
+			info->op2 = info->op3; \
+		} else if (0 == 2) { \
+			info->operandFormat &= ~ARM_OPERAND_2; \
+		} \
+		if (info->op1.reg == ARM_PC) { \
+			info->branchType = ARM_BRANCH_INDIRECT; \
+		}; \
+	}
+
+void ARMDecodeARM(uint32_t opcode, struct ARMInstructionInfo* info) {
+	info->execMode = MODE_ARM;
+	info->opcode = opcode;
+	info->branchType = ARM_BRANCH_NONE;
+	info->traps = 0;
+	info->affectsCPSR = 0;
+	info->condition = opcode >> 28;
+	info->sDataCycles = 0;
+	info->nDataCycles = 0;
+	info->sInstructionCycles = 1;
+	info->nInstructionCycles = 0;
+	info->iCycles = 0;
+	info->cCycles = 0;
+	ARMDecoder decoder = _armDecoderTable[((opcode >> 16) & 0xFF0) | ((opcode >> 4) & 0x00F)];
+	decoder(opcode, info);
+}
+
+
+
+
 ARM指令定义：
 isa-arm.h
 typedef void (*ARMInstruction)(struct ARMCore*, uint32_t opcode);
@@ -55,7 +152,7 @@ DECLARE_ARM_EMITTER_BLOCK(_ARMInstruction)
     ......
 
 具体执行的指令函数：
-isa-arm.h
+isa-arm.c
 static void _ARMInstruction ## ADD ## _LSL (struct ARMCore* cpu, uint32_t opcode) {
 		int currentCycles = ARM_PREFETCH_CYCLES;
 		int rd = (opcode >> 12) & 0xF;
@@ -77,98 +174,6 @@ static void _ARMInstruction ## ADD ## _LSL (struct ARMCore* cpu, uint32_t opcode
 
 
 
-
-ARM指令解码：
-decoder.h
-struct ARMInstructionInfo {		//指令信息
-	uint32_t opcode;
-	union ARMOperand op1;
-	union ARMOperand op2;
-	union ARMOperand op3;
-	union ARMOperand op4;
-	struct ARMMemoryAccess memory;
-	int operandFormat;
-	unsigned execMode : 1;
-	bool traps : 1;
-	bool affectsCPSR : 1;
-	unsigned branchType : 3;
-	unsigned condition : 4;
-	unsigned mnemonic : 6;
-	unsigned iCycles : 3;
-	unsigned cCycles : 4;
-	unsigned sInstructionCycles : 4;
-	unsigned nInstructionCycles : 4;
-	unsigned sDataCycles : 10;
-	unsigned nDataCycles : 10;
-};
-void ARMDecodeARM(uint32_t opcode, struct ARMInstructionInfo* info);
-
-decoder-arm.h
-typedef void (*ARMDecoder)(uint32_t opcode, struct ARMInstructionInfo* info);
-
-static const ARMDecoder _armDecoderTable[0x1000] = {
-	DECLARE_ARM_EMITTER_BLOCK(_ARMDecode)
-};
-DECLARE_ARM_EMITTER_BLOCK(_ARMDecode)
-扩展为：
-    ......
-    _ARMDecodeADD_LSL
-	_ARMDecodeADD_LSLR
-	_ARMDecodeADD_LSR
-	_ARMDecodeADD_LSRR
-	_ARMDecodeADD_ASR
-	_ARMDecodeADD_ASRR
-	_ARMDecodeADD_ROR
-	_ARMDecodeADD_RORR
-	_ARMDecodeADD_LSL
-	_ARMDecodeUMULL
-	_ARMDecodeADD_LSR
-	_ARMDecodeSTRHU
-	_ARMDecodeADD_ASR
-	_ARMDecodeILL
-	_ARMDecodeADD_ROR
-	_ARMDecodeILL
-    ......
-
-void ARMDecodeARM(uint32_t opcode, struct ARMInstructionInfo* info) {
-	info->execMode = MODE_ARM;
-	info->opcode = opcode;
-	info->branchType = ARM_BRANCH_NONE;
-	info->traps = 0;
-	info->affectsCPSR = 0;
-	info->condition = opcode >> 28;
-	info->sDataCycles = 0;
-	info->nDataCycles = 0;
-	info->sInstructionCycles = 1;
-	info->nInstructionCycles = 0;
-	info->iCycles = 0;
-	info->cCycles = 0;
-	ARMDecoder decoder = _armDecoderTable[((opcode >> 16) & 0xFF0) | ((opcode >> 4) & 0x00F)];
-	decoder(opcode, info);
-}
-
-static void _ARMDecode ## ADD ## _LSL (uint32_t opcode, struct ARMInstructionInfo* info) { \
-		UNUSED(opcode); \
-		info->mnemonic = ARM_MN_ ## ADD; \
-		
-		info->op1.reg = (opcode >> 12) & 0xF; \
-		info->op2.reg = (opcode >> 16) & 0xF; \
-		info->operandFormat = ARM_OPERAND_REGISTER_1 | \
-			ARM_OPERAND_AFFECTED_1 | \
-			ARM_OPERAND_REGISTER_2; \
-		info->affectsCPSR = 0; \
-		ADDR_MODE_1_LSL; \
-		if (0 == 1) { \
-			info->operandFormat >>= 8; \
-			info->op1 = info->op2; \
-			info->op2 = info->op3; \
-		} else if (0 == 2) { \
-			info->operandFormat &= ~ARM_OPERAND_2; \
-		} \
-		if (info->op1.reg == ARM_PC) { \
-			info->branchType = ARM_BRANCH_INDIRECT; \
-		}; \
-	}
 
 arm.c
 static inline void ARMStep(struct ARMCore* cpu) {	//ARM处理器指令执行步骤
