@@ -213,7 +213,7 @@ void ARMReset(struct ARMCore* cpu) {
 	cpu->irqh.reset(cpu);
 }
 
-//写ARM状态所用的程序计数器
+//写ARM指令所用的程序计数器
 #define ARM_WRITE_PC \
 	cpu->gprs[ARM_PC] = (cpu->gprs[ARM_PC] & -WORD_SIZE_ARM); \
 	cpu->memory.setActiveRegion(cpu, cpu->gprs[ARM_PC]); \
@@ -221,7 +221,7 @@ void ARMReset(struct ARMCore* cpu) {
 	cpu->gprs[ARM_PC] += WORD_SIZE_ARM; \
 	currentCycles += 2 + cpu->memory.activeUncachedCycles32 + cpu->memory.activeSeqCycles32;
 
-//写THUMB状态所用的程序计数器
+//写THUMB指令所用的程序计数器
 #define THUMB_WRITE_PC \
 	cpu->gprs[ARM_PC] = (cpu->gprs[ARM_PC] & -WORD_SIZE_THUMB); \
 	cpu->memory.setActiveRegion(cpu, cpu->gprs[ARM_PC]); \

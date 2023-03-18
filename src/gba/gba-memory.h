@@ -99,6 +99,7 @@ enum {
 	SIZE_CART_EEPROM = 0x00002000
 };
 
+//通过地址高8位确定地址所在区域（BIOS、WRAM、IWRAM、I/O Registers...），低24位确定偏移量
 enum {
 	OFFSET_MASK = 0x00FFFFFF,
 	BASE_OFFSET = 24
@@ -142,11 +143,11 @@ struct GBADMA {
 };
 
 struct GBAMemory {
-	uint32_t* bios;	//0x00000000-0x00003FFF   BIOS - System ROM (16 KBytes)
-	uint32_t* wram;	//0x02000000-0x0203FFFF   WRAM - On-board Work RAM (256 KBytes) 2 Wait
-	uint32_t* iwram;//0x03000000-0x03007FFF   WRAM - On-chip Work RAM (32 KBytes)
-	uint32_t* rom;	//0x08000000-0x0FFFFFFF   External Memory (Game Pak)
-	uint16_t io[SIZE_IO >> 1];
+	uint32_t* bios;				//0x00000000-0x00003FFF   BIOS - System ROM (16 KBytes)
+	uint32_t* wram;				//0x02000000-0x0203FFFF   WRAM - On-board Work RAM (256 KBytes) 2 Wait
+	uint32_t* iwram;			//0x03000000-0x03007FFF   WRAM - On-chip Work RAM (32 KBytes)
+	uint32_t* rom;				//0x08000000-0x0FFFFFFF   External Memory (Game Pak)
+	uint16_t io[SIZE_IO >> 1];	//0x04000000-040003FE   I/O Registers
 
 	struct GBACartridgeGPIO gpio;
 	struct GBASavedata savedata;
@@ -162,7 +163,7 @@ struct GBAMemory {
 	char waitstatesPrefetchSeq16[16];
 	char waitstatesPrefetchNonseq32[16];
 	char waitstatesPrefetchNonseq16[16];
-	int activeRegion;
+	int activeRegion;		//GBA内存活动区域，BIOS、WRAM、IWRAM、I/O Registers...，取值为0x0、0x2、0x3...
 	uint32_t biosPrefetch;
 
 	struct GBADMA dma[4];	//The GBA includes four DMA channels，GBA包含4个DMA通道

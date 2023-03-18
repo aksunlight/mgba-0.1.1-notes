@@ -270,8 +270,8 @@ struct ARMMemory {
 	//对应批量数据存储指令STM
 	uint32_t (*storeMultiple)(struct ARMCore*, uint32_t baseAddress, int mask, enum LSMDirection direction, int* cycleCounter);
 
-	uint32_t* activeRegion;				//当前指令/事件基地址
-	uint32_t activeMask;				//当前指令/事件偏移地址
+	uint32_t* activeRegion;				//当前访问的内存区域的基址
+	uint32_t activeMask;				//当前访问的内存地址掩码
 	uint32_t activeSeqCycles32;			//序列周期数
 	uint32_t activeSeqCycles16;
 	uint32_t activeNonseqCycles32;		//非序列周期数

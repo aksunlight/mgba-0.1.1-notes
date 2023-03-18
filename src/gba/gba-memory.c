@@ -116,6 +116,7 @@ void GBAMemoryReset(struct GBA* gba) {
 	}
 }
 
+cpu->memory.setActiveRegion(cpu, cpu->gprs[ARM_PC])
 static void GBASetActiveRegion(struct ARMCore* cpu, uint32_t address) {
 	struct GBA* gba = (struct GBA*) cpu->master;
 	struct GBAMemory* memory = &gba->memory;
