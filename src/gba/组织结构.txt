@@ -1,0 +1,4 @@
+
+                                            windows allocate memory(VirtualAlloc)
+GBA memory allocate-->anonymousMemoryMap-->
+                                            unix/linux allocate memory(mmap)
