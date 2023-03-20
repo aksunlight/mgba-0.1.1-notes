@@ -8,6 +8,7 @@
         "common.h": "c",
         "debugger.h": "c",
         "circle-buffer.h": "c",
-        "memory.h": "c"
+        "memory.h": "c",
+        "gba-serialize.h": "c"
     }
 }

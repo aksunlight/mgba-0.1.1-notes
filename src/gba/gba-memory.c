@@ -19,10 +19,47 @@ static uint32_t _deadbeef = 0xDEADBEEF;
 static void GBASetActiveRegion(struct ARMCore* cpu, uint32_t region);
 static void GBAMemoryServiceDMA(struct GBA* gba, int number, struct GBADMA* info);
 
+/*
+Shows the Bus-Width, supported read and write widths, 
+and the clock cycles for 8/16/32bit accesses.
+  Region        Bus   Read      Write     Cycles
+  BIOS ROM      32    8/16/32   -         1/1/1
+  Work RAM 32K  32    8/16/32   8/16/32   1/1/1
+  I/O           32    8/16/32   8/16/32   1/1/1
+  OAM           32    8/16/32   16/32     1/1/1 *
+  Work RAM 256K 16    8/16/32   8/16/32   3/3/6 **
+  Palette RAM   16    8/16/32   16/32     1/1/2 *
+  VRAM          16    8/16/32   16/32     1/1/2 *
+  GamePak ROM   16    8/16/32   -         5/5/8 ** ***
+  GamePak Flash 16    8/16/32   16/32     5/5/8 ** ***
+  GamePak SRAM  8     8         8         5     **
+
+  *   Plus 1 cycle if GBA accesses video memory at the same time.
+  **  Default waitstate settings, see System Control chapter.
+  *** Separate timings for sequential, and non-sequential accesses.
+  One cycle equals approx. 59.59ns (ie. 16.78MHz clock).
+
+
+Different access timings may be assigned to each area.
+(this might be useful in case that a game pak contains several ROM chips with different access times each).
+  Bit   Expl.
+  0-1   SRAM Wait Control          (0..3 = 4,3,2,8 cycles)
+  2-3   Wait State 0 First Access  (0..3 = 4,3,2,8 cycles)
+  4     Wait State 0 Second Access (0..1 = 2,1 cycles)
+  5-6   Wait State 1 First Access  (0..3 = 4,3,2,8 cycles)
+  7     Wait State 1 Second Access (0..1 = 4,1 cycles; unlike above WS0)
+  8-9   Wait State 2 First Access  (0..3 = 4,3,2,8 cycles)
+  10    Wait State 2 Second Access (0..1 = 8,1 cycles; unlike above WS0,WS1)
+  11-12 PHI Terminal Output        (0..3 = Disable, 4.19MHz, 8.38MHz, 16.78MHz)
+  13    Not used
+  14    Game Pak Prefetch Buffer (Pipe) (0=Disable, 1=Enable)
+  15    Game Pak Type Flag  (Read Only) (0=GBA, 1=CGB) (IN35 signal)
+  16-31 Not used
+*/
 static const char GBA_BASE_WAITSTATES[16] = { 0, 0, 2, 0, 0, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4 };
-static const char GBA_BASE_WAITSTATES_32[16] = { 0, 0, 5, 0, 0, 0, 0, 0, 7, 7, 9, 9, 13, 13, 9 };
+static const char GBA_BASE_WAITSTATES_32[16] = { 0, 0, 5, 0, 0, 1, 1, 0, 7, 7, 9, 9, 13, 13, 9 };
 static const char GBA_BASE_WAITSTATES_SEQ[16] = { 0, 0, 2, 0, 0, 0, 0, 0, 2, 2, 4, 4, 8, 8, 4 };
-static const char GBA_BASE_WAITSTATES_SEQ_32[16] = { 0, 0, 5, 0, 0, 0, 0, 0, 5, 5, 9, 9, 17, 17, 9 };
+static const char GBA_BASE_WAITSTATES_SEQ_32[16] = { 0, 0, 5, 0, 0, 1, 1, 0, 5, 5, 9, 9, 17, 17, 9 };
 static const char GBA_ROM_WAITSTATES[] = { 4, 3, 2, 8 };
 static const char GBA_ROM_WAITSTATES_SEQ[] = { 2, 1, 4, 1, 8, 1 };
 static const int DMA_OFFSET[] = { 1, -1, 0, 1 };

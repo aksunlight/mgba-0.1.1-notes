@@ -265,9 +265,9 @@ static inline void ARMStep(struct ARMCore* cpu) {
 			return;
 		}
 	}
-	// 								_armTable[ [27-25][24-21][20]0000  |  00000000[7-4] ] = _armTable[ [27-25][24-21][20][7-4] ]
+	//							 _armTable[ [27-25][24-21][20]0000  |  00000000[7-4] ] = _armTable[ [27-25][24-21][20][7-4] ]
 	ARMInstruction instruction = _armTable[((opcode >> 16) & 0xFF0) | ((opcode >> 4) & 0x00F)];
-	instruction(cpu, opcode);
+	instruction(cpu, opcode);	//除了在内部执行指令外还会计算时钟周期cpu->cycles += ARM_PREFETCH_CYCLES;
 }
 
 //Thumb状态的指令执行步骤
