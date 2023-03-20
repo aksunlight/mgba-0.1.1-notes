@@ -153,7 +153,10 @@ void GBAMemoryReset(struct GBA* gba) {
 	}
 }
 
-cpu->memory.setActiveRegion(cpu, cpu->gprs[ARM_PC])
+/* 
+ *cpu->memory.setActiveRegion = GBASetActiveRegion
+ *cpu->memory.setActiveRegion(cpu, cpu->gprs[ARM_PC])
+*/
 static void GBASetActiveRegion(struct ARMCore* cpu, uint32_t address) {
 	struct GBA* gba = (struct GBA*) cpu->master;
 	struct GBAMemory* memory = &gba->memory;
@@ -202,6 +205,8 @@ static void GBASetActiveRegion(struct ARMCore* cpu, uint32_t address) {
 		GBALog(gba, GBA_LOG_FATAL, "Jumped to invalid address");
 		break;
 	}
+
+	//设置时钟周期cycel
 	cpu->memory.activeSeqCycles32 = memory->waitstatesPrefetchSeq32[memory->activeRegion];
 	cpu->memory.activeSeqCycles16 = memory->waitstatesPrefetchSeq16[memory->activeRegion];
 	cpu->memory.activeNonseqCycles32 = memory->waitstatesPrefetchNonseq32[memory->activeRegion];

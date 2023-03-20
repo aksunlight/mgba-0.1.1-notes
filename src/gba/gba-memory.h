@@ -155,6 +155,12 @@ struct GBAMemory {
 	uint16_t romID;
 	int fullBios;
 
+	/*
+	 *The ARM7TDMI also has four different types of cycles, on which
+	 *the CPU clock may stall for a different amount of time.
+	 *How long each stall is depends on which region of memory is being accessed.
+	 *The GBA refers to these stalls as “wait states”.
+	*/
 	char waitstatesSeq32[256];
 	char waitstatesSeq16[256];
 	char waitstatesNonseq32[256];
