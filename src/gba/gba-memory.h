@@ -143,6 +143,7 @@ struct GBADMA {
 };
 
 struct GBAMemory {
+	//内存区域基址
 	uint32_t* bios;				//0x00000000-0x00003FFF   BIOS - System ROM (16 KBytes)
 	uint32_t* wram;				//0x02000000-0x0203FFFF   WRAM - On-board Work RAM (256 KBytes) 2 Wait
 	uint32_t* iwram;			//0x03000000-0x03007FFF   WRAM - On-chip Work RAM (32 KBytes)
@@ -169,11 +170,11 @@ struct GBAMemory {
 	char waitstatesPrefetchSeq16[16];
 	char waitstatesPrefetchNonseq32[16];
 	char waitstatesPrefetchNonseq16[16];
-	int activeRegion;		//GBA内存活动区域，BIOS、WRAM、IWRAM、I/O Registers...，取值为0x0、0x2、0x3...
+	int activeRegion;		//当前使用的GBA内存区域，BIOS、WRAM、IWRAM、I/O Registers...，取值为0x0、0x2、0x3...
 	uint32_t biosPrefetch;
 
 	struct GBADMA dma[4];	//The GBA includes four DMA channels，GBA包含4个DMA通道
-	int activeDMA;
+	int activeDMA;			//当前使用的DMA通道
 	int32_t nextDMA;
 	int32_t eventDiff;
 };

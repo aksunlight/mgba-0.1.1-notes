@@ -1,4 +1,25 @@
 
-                                            windows allocate memory(VirtualAlloc)
-GBA memory allocate-->anonymousMemoryMap-->
-                                            unix/linux allocate memory(mmap)
+GBA Memory:
+GBAMemoryReset-->memory(WRAM/IWRAM) allocate-->anonymousMemoryMap-->VirtualAlloc/mmap
+
+struct ARMCore* cpu
+struct GBA* gba = (struct GBA*) cpu->master;
+struct GBAMemory* memory = &gba->memory;
+
+struct ARMCore {
+    ...
+    struct ARMMemory memory;
+    ...
+    struct ARMComponent* master;
+    ...
+};
+
+struct GBA {
+	struct ARMComponent d;
+
+    struct ARMCore* cpu;
+	struct GBAMemory memory;
+    ...
+};
+
+
