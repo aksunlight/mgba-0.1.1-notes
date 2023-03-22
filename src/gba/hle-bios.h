@@ -8,6 +8,8 @@
 
 #include "util/common.h"
 
+//A HLE BIOS is a BIOS emulated by software, by the emulator. As such, it doesn't need external files like other emulators.
+//https://emulation.gametechwiki.com/index.php/High/Low_level_emulation
 extern const uint8_t hleBios[];
 
 #endif

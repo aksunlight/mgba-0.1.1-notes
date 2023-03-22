@@ -22,4 +22,36 @@ struct GBA {
     ...
 };
 
+struct ARMComponent {
+	uint32_t id;
+	void (*init)(struct ARMCore* cpu, struct ARMComponent* component);
+	void (*deinit)(struct ARMComponent* component);
+};
 
+
+GBA:
+void GBACreate(struct GBA* gba) {
+	gba->d.id = GBA_COMPONENT_MAGIC;
+	gba->d.init = GBAInit;
+	gba->d.deinit = 0;
+}
+
+//初始化GBA中断句柄、存储、音频、视频、IO等
+static void GBAInit(struct ARMCore* cpu, struct ARMComponent* component) {
+    ....
+    GBAInterruptHandlerInit(&cpu->irqh);
+	GBAMemoryInit(gba);
+	GBASavedataInit(&gba->memory.savedata, 0);
+
+	gba->video.p = gba;
+	GBAVideoInit(&gba->video);
+
+	gba->audio.p = gba;
+	GBAAudioInit(&gba->audio, GBA_AUDIO_SAMPLES);
+
+	GBAIOInit(gba);
+
+	gba->sio.p = gba;
+	GBASIOInit(&gba->sio);
+    ...
+}

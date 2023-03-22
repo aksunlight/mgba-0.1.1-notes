@@ -9,6 +9,7 @@
         "debugger.h": "c",
         "circle-buffer.h": "c",
         "memory.h": "c",
-        "gba-serialize.h": "c"
+        "gba-serialize.h": "c",
+        "hle-bios.h": "c"
     }
 }
