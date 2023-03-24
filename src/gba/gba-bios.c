@@ -121,6 +121,7 @@ static void _Div(struct GBA* gba, int32_t num, int32_t denom) {
 	}
 }
 
+//16位软中断处理程序
 void GBASwi16(struct ARMCore* cpu, int immediate) {
 	struct GBA* gba = (struct GBA*) cpu->master;
 	GBALog(gba, GBA_LOG_SWI, "SWI: %02X r0: %08X r1: %08X r2: %08X r3: %08X",
@@ -224,6 +225,7 @@ void GBASwi16(struct ARMCore* cpu, int immediate) {
 	gba->memory.biosPrefetch = 0xE3A02004;
 }
 
+//32位软中断处理程序
 void GBASwi32(struct ARMCore* cpu, int immediate) {
 	GBASwi16(cpu, immediate >> 16);
 }

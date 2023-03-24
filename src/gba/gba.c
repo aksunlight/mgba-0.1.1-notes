@@ -178,16 +178,18 @@ void GBADestroy(struct GBA* gba) {
 	GBARRContextDestroy(gba);
 }
 
+//GBA中断句柄初始化，即ARM核中断句柄初始化
 void GBAInterruptHandlerInit(struct ARMInterruptHandler* irqh) {
-	irqh->reset = GBAReset;
-	irqh->processEvents = GBAProcessEvents;
-	irqh->swi16 = GBASwi16;
-	irqh->swi32 = GBASwi32;
-	irqh->hitIllegal = GBAIllegal;
-	irqh->readCPSR = GBATestIRQ;
-	irqh->hitStub = GBAHitStub;
+	irqh->reset = GBAReset;						//复位异常
+	irqh->processEvents = GBAProcessEvents;		//FIQ、IRQ硬件中断
+	irqh->swi16 = GBASwi16;						//16位软中断
+	irqh->swi32 = GBASwi32;						//32位软中断
+	irqh->hitIllegal = GBAIllegal;				//未定义指令异常
+	irqh->readCPSR = GBATestIRQ;				//读当前程序状态寄存器
+	irqh->hitStub = GBAHitStub;					//指令预取中止异常、数据中止异常
 }
 
+//复位异常处理程序
 void GBAReset(struct ARMCore* cpu) {
 	ARMSetPrivilegeMode(cpu, MODE_IRQ);
 	cpu->gprs[ARM_SP] = SP_BASE_IRQ;
@@ -212,6 +214,7 @@ void GBAReset(struct ARMCore* cpu) {
 	memset(gba->timers, 0, sizeof(gba->timers));
 }
 
+//FIQ、IRQ硬件中断处理程序
 static void GBAProcessEvents(struct ARMCore* cpu) {
 	do {
 		struct GBA* gba = (struct GBA*) cpu->master;
@@ -559,6 +562,7 @@ void GBARaiseIRQ(struct GBA* gba, enum GBAIRQ irq) {
 	}
 }
 
+//读当前程序状态寄存器处理程序
 void GBATestIRQ(struct ARMCore* cpu) {
 	struct GBA* gba = (struct GBA*) cpu->master;
 	if (gba->memory.io[REG_IME >> 1] && gba->memory.io[REG_IE >> 1] & gba->memory.io[REG_IF >> 1]) {
@@ -661,6 +665,7 @@ void GBAHitStub(struct ARMCore* cpu, uint32_t opcode) {
 	GBALog(gba, level, "Stub opcode: %08x", opcode);
 }
 
+//指令预取中止异常、数据中止异常处理程序
 void GBAIllegal(struct ARMCore* cpu, uint32_t opcode) {
 	struct GBA* gba = (struct GBA*) cpu->master;
 	GBALog(gba, GBA_LOG_WARN, "Illegal opcode: %08x", opcode);
