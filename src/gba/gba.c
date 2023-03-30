@@ -655,6 +655,7 @@ void GBAGetGameTitle(struct GBA* gba, char* out) {
 	memcpy(out, &((struct GBACartridge*) gba->memory.rom)->title, 12);
 }
 
+//指令预取中止异常、数据中止异常处理程序
 void GBAHitStub(struct ARMCore* cpu, uint32_t opcode) {
 	struct GBA* gba = (struct GBA*) cpu->master;
 	enum GBALogLevel level = GBA_LOG_FATAL;
@@ -665,7 +666,7 @@ void GBAHitStub(struct ARMCore* cpu, uint32_t opcode) {
 	GBALog(gba, level, "Stub opcode: %08x", opcode);
 }
 
-//指令预取中止异常、数据中止异常处理程序
+//未定义指令异常
 void GBAIllegal(struct ARMCore* cpu, uint32_t opcode) {
 	struct GBA* gba = (struct GBA*) cpu->master;
 	GBALog(gba, GBA_LOG_WARN, "Illegal opcode: %08x", opcode);
