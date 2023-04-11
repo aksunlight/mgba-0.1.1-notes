@@ -1,31 +1,3 @@
-GBA:
-void GBACreate(struct GBA* gba) {
-	gba->d.id = GBA_COMPONENT_MAGIC;
-	gba->d.init = GBAInit;
-	gba->d.deinit = 0;
-}
-
-//初始化GBA中断句柄、存储、音频、视频、IO等
-static void GBAInit(struct ARMCore* cpu, struct ARMComponent* component) {
-    ....
-    GBAInterruptHandlerInit(&cpu->irqh);
-	GBAMemoryInit(gba);
-	GBASavedataInit(&gba->memory.savedata, 0);
-
-	gba->video.p = gba;
-	GBAVideoInit(&gba->video);
-
-	gba->audio.p = gba;
-	GBAAudioInit(&gba->audio, GBA_AUDIO_SAMPLES);
-
-	GBAIOInit(gba);
-
-	gba->sio.p = gba;
-	GBASIOInit(&gba->sio);
-    ...
-}
-
-
 GBA Memory:
 GBAMemoryReset-->memory(WRAM/IWRAM) allocate-->anonymousMemoryMap-->VirtualAlloc/mmap
 
@@ -55,3 +27,103 @@ struct ARMComponent {
 	void (*deinit)(struct ARMComponent* component);
 };
 
+
+
+
+GBA setup(gdb-thread.c:_GBAThreadRun):
+static THREAD_ENTRY _GBAThreadRun(void* context) {
+	...
+	struct GBA gba;
+	struct ARMCore cpu;
+	struct Patch patch;
+	struct GBAThread* threadContext = context;
+	struct ARMComponent* components[1] = {};
+	int numComponents = 0;
+	...
+	**GBACreate(&gba);**
+	**ARMSetComponents(&cpu, &gba.d, numComponents, components);**
+	**ARMInit(&cpu);**
+	...
+	**ARMReset(&cpu);**
+	...
+	_changeState(threadContext, THREAD_RUNNING, true);
+	**ARMRunLoop(&cpu);**
+	...
+	threadContext->gba = 0;
+	**ARMDeinit(&cpu);**
+	**GBADestroy(&gba);**
+
+}
+
+void GBACreate(struct GBA* gba) {
+	gba->d.id = GBA_COMPONENT_MAGIC;
+	gba->d.init = GBAInit;
+	gba->d.deinit = 0;
+}
+
+void ARMSetComponents(struct ARMCore* cpu, struct ARMComponent* master, int extra, struct ARMComponent** extras) {
+	cpu->master = master;
+	cpu->numComponents = extra;
+	cpu->components = extras;
+}
+
+void ARMInit(struct ARMCore* cpu) {
+	cpu->master->init(cpu, cpu->master);
+	int i;
+	for (i = 0; i < cpu->numComponents; ++i) {
+		cpu->components[i]->init(cpu, cpu->components[i]);
+	}
+}
+
+//初始化GBA中断句柄、存储、音频、视频、IO等
+static void GBAInit(struct ARMCore* cpu, struct ARMComponent* component) {
+    ....
+    GBAInterruptHandlerInit(&cpu->irqh);
+	GBAMemoryInit(gba);
+	GBASavedataInit(&gba->memory.savedata, 0);
+
+	gba->video.p = gba;
+	GBAVideoInit(&gba->video);
+
+	gba->audio.p = gba;
+	GBAAudioInit(&gba->audio, GBA_AUDIO_SAMPLES);
+
+	GBAIOInit(gba);
+
+	gba->sio.p = gba;
+	GBASIOInit(&gba->sio);
+    ...
+}
+
+文件结构.txt:180	ARMReset(&cpu);
+文件结构.txt:310	ARMRunLoop(&cpu);
+
+void ARMDeinit(struct ARMCore* cpu) {
+	if (cpu->master->deinit) {
+		cpu->master->deinit(cpu->master);
+	}
+	int i;
+	for (i = 0; i < cpu->numComponents; ++i) {
+		if (cpu->components[i]->deinit) {
+			cpu->components[i]->deinit(cpu->components[i]);
+		}
+	}
+}
+
+void GBADestroy(struct GBA* gba) {
+	if (gba->pristineRom == gba->memory.rom) {
+		gba->memory.rom = 0;
+	}
+	if (gba->romVf) {
+		gba->romVf->unmap(gba->romVf, gba->pristineRom, gba->pristineRomSize);
+	}
+
+	if (gba->biosVf) {
+		gba->biosVf->unmap(gba->biosVf, gba->memory.bios, SIZE_BIOS);
+	}
+
+	GBAMemoryDeinit(gba);
+	GBAVideoDeinit(&gba->video);
+	GBAAudioDeinit(&gba->audio);
+	GBARRContextDestroy(gba);
+}

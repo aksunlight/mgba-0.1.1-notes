@@ -81,7 +81,7 @@ void ARMInit(struct ARMCore* cpu) {
 	}
 }
 
-//另一种初始化进程的方式
+//反初始化，析构，销毁对象
 void ARMDeinit(struct ARMCore* cpu) {
 	if (cpu->master->deinit) {
 		cpu->master->deinit(cpu->master);

@@ -94,13 +94,13 @@ Z：零，改变标志位的最后的ALU操作产生0结果（32位结果的每�
 C：进位/借位，改变标志位的最后的ALU操作产生到符号位的进位
 V：溢出，改变标志位的最后的ALU操作产生到符号位的溢出
 */
-enum PrivilegeMode {    //特权模式下PSR寄存器设置
+enum PrivilegeMode {    //各个工作模式下PSR寄存器设置
 	MODE_USER = 0x10,           //用户模式(PSR低5位为10000)，正常程序运行模式
 	MODE_FIQ = 0x11,            //快速中断模式(PSR低5位为10001)，快速中断处理，用于高速数据传输
 	MODE_IRQ = 0x12,            //外部中断模式(PSR低5位为10010)，普通中断处理
 	MODE_SUPERVISOR = 0x13,     //访管模式(PSR低5位为10011)，提供操作系统使用的一种保护模式，执行软中断时进入该模式
-	MODE_ABORT = 0x17,          //数据访问终止模式(PSR低5位为10111)，当数据或指令预取终止时进入该模式，用于虚拟存储和存储保护
-	MODE_UNDEFINED = 0x1B,      //未定义指令终止模式(PSR低5位为11011)，当未定义的指令执行时进入该模式，用于支持通过软件仿真硬件的协处理
+	MODE_ABORT = 0x17,          //中止模式(PSR低5位为10111)，当数据或指令预取终止时进入该模式，用于虚拟存储和存储保护
+	MODE_UNDEFINED = 0x1B,      //未定义模式(PSR低5位为11011)，当未定义的指令执行时进入该模式，用于支持通过软件仿真硬件的协处理
 	MODE_SYSTEM = 0x1F          //系统模式(PSR低5位为11111)，用于运行特权级的操作系统任务
 };
 
@@ -121,15 +121,24 @@ enum WordSize {
 注意：ARMv4T架构中每个异常对应异常向量表中的4个字节的空间，其中存放了一个跳转指令或者向PC指令赋值的数据访问指令，而不是异常处理程序入口地址
 
 异常向量表：
-地址            异常       进入模式        优先级（6最低）
-0x00000000     复位        管理模式            1
-0x00000004   未定义指令     未定义模式          6
-0x00000008    软件中断      管理模式            6
-0x0000000C   预取指令中止   中止模式            5
-0x00000010    数据中止      中止模式           2
-0x00000014     保留         保留              未使用
-0x00000018     IRQ         IRQ               4
-0x0000001C     FIQ         FIQ                3
+Address     Exception              Mode on entry      I state on entry      F state on entry 
+0x00000000  Reset                   Supervisor              Set                  Set
+0x00000004  Undefined instruction   Undefined               Set                Unchanged
+0x00000008  Software interrupt      Supervisor              Set                Unchanged
+0x0000000C  Prefetch Abort             Abort                Set                Unchanged
+0x00000010  Data Abort                 Abort                Set                Unchanged
+0x00000014  Reserved                 Reserved                -                     -
+0x00000018  IRQ                        IRQ                  Set                Unchanged
+0x0000001C  FIQ                        FIQ                  Set                  Set
+
+异常优先级：
+Priority    Exception
+Highest     Reset
+            Data Abort
+            FIQ
+            IRQ
+            Prefetch Abort
+Lowest      Undefined instruction and SWI
 
 ARM处理器对异常的响应过程：
 1.保存处理器当前状态, 包括中断屏蔽位和各条件标志位, 它通过将CPSR的内容保存到将要执行的异常对应的SPSR寄存器中实现
@@ -194,6 +203,7 @@ ARM芯片的程序状态寄存器PSR（Program State Register）有两个
 除user、sys外的5种处理器模式都有一个专用的物理寄存器作为备份的程序状态寄存器
 当异常发生时, 这个物理寄存器负责保存CPSR当前程序状态寄存器的内容
 当异常处理程序返回时, 再将内容恢复到当前程序状态器中, 恢复现场后继续执行原来程序
+
 ARM程序状态寄存器格式（v4T架构）：
 N Z C V    Unsed    I F T Mode
 31-28      27-8     7 6 5 4-0

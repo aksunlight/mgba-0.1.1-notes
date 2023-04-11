@@ -18,6 +18,7 @@
 
 extern const uint32_t GBA_ARM7TDMI_FREQUENCY;
 
+//GBA IRQ中断源，GBA中屏蔽FIQ
 enum GBAIRQ {
 	IRQ_VBLANK = 0x0,
 	IRQ_HBLANK = 0x1,
@@ -60,6 +61,7 @@ enum GBALogLevel {
 #endif
 };
 
+//GBA 按键
 enum GBAKey {
 	GBA_KEY_A = 0,
 	GBA_KEY_B = 1,
@@ -128,6 +130,7 @@ struct GBA {
 	int logLevel;
 };
 
+//GBA 卡带
 struct GBACartridge {
 	uint32_t entry;
 	uint8_t logo[156];
