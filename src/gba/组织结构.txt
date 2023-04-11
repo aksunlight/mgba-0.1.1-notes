@@ -127,3 +127,6 @@ void GBADestroy(struct GBA* gba) {
 	GBAAudioDeinit(&gba->audio);
 	GBARRContextDestroy(gba);
 }
+
+
+GBA rerecording: gba-rr
