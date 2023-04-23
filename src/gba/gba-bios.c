@@ -16,12 +16,26 @@ static void _unLz77(struct GBA* gba, uint32_t source, uint32_t dest, int width);
 static void _unHuffman(struct GBA* gba, uint32_t source, uint32_t dest);
 static void _unRl(struct GBA* gba, uint32_t source, uint32_t dest, int width);
 
+// BIOS Function Summary
+
+/*
+ * BIOS Reset Functions
+ * SWI 01h (GBA) - RegisterRamReset
+ * Reset the I/O registers and RAM specified in ResetFlags. However, it does't clear the CPU internal RAM area from 3007E00h-3007FFFh.
+ */
 static void _RegisterRamReset(struct GBA* gba) {
 	uint32_t registers = gba->cpu->gprs[0];
 	UNUSED(registers);
 	GBALog(gba, GBA_LOG_STUB, "RegisterRamReset unimplemented");
 }
 
+/*
+ * BG is background(背景)
+ * 
+ * BIOS Rotation/Scaling(旋转/缩放) Functions
+ * SWI 0Eh (GBA) - BgAffineSet
+ * Used to calculate BG Rotation/Scaling parameters.
+ */
 static void _BgAffineSet(struct GBA* gba) {
 	struct ARMCore* cpu = gba->cpu;
 	int i = cpu->gprs[2];
@@ -66,6 +80,13 @@ static void _BgAffineSet(struct GBA* gba) {
 	}
 }
 
+/*
+ * OBG就是图形学中的Sprite(精灵)
+ *
+ * BIOS Rotation/Scaling(旋转/缩放) Functions
+ * SWI 0Fh (GBA) - ObjAffineSet
+ * Used to calculate BG Rotation/Scaling parameters.
+ */
 static void _ObjAffineSet(struct GBA* gba) {
 	struct ARMCore* cpu = gba->cpu;
 	int i = cpu->gprs[2];
