@@ -88,6 +88,8 @@ ARM CPSR寄存器格式（v4T架构）：
 N Z C V    Unsed    I F T Mode
 31-28      27-8     7 6 5 4-0
 
+I: IRQ disable
+F: FIQ disable
 CPSR寄存器条件标志位的意义如下：
 N：负数，改变标志位的最后的ALU操作产生负数结果（32位结果的最高位是1）
 Z：零，改变标志位的最后的ALU操作产生0结果（32位结果的每一位都是0）

@@ -18,11 +18,6 @@ static void _unRl(struct GBA* gba, uint32_t source, uint32_t dest, int width);
 
 // BIOS Function Summary
 
-/*
- * BIOS Reset Functions
- * SWI 01h (GBA) - RegisterRamReset
- * Reset the I/O registers and RAM specified in ResetFlags. However, it does't clear the CPU internal RAM area from 3007E00h-3007FFFh.
- */
 static void _RegisterRamReset(struct GBA* gba) {
 	uint32_t registers = gba->cpu->gprs[0];
 	UNUSED(registers);
@@ -85,7 +80,7 @@ static void _BgAffineSet(struct GBA* gba) {
  *
  * BIOS Rotation/Scaling(旋转/缩放) Functions
  * SWI 0Fh (GBA) - ObjAffineSet
- * Used to calculate BG Rotation/Scaling parameters.
+ * Calculates and sets the OBJ's affine parameters from the scaling ratio and angle of rotation.
  */
 static void _ObjAffineSet(struct GBA* gba) {
 	struct ARMCore* cpu = gba->cpu;
@@ -119,6 +114,11 @@ static void _ObjAffineSet(struct GBA* gba) {
 	}
 }
 
+/*
+ * BIOS Sound Functions
+ * SWI 1Fh (GBA) - MidiKey2Freq
+ * 
+ */
 static void _MidiKey2Freq(struct GBA* gba) {
 	struct ARMCore* cpu = gba->cpu;
 	uint32_t key = cpu->memory.load32(cpu, cpu->gprs[0] + 4, 0);
@@ -153,17 +153,49 @@ void GBASwi16(struct ARMCore* cpu, int immediate) {
 		return;
 	}
 	switch (immediate) {
+	/*
+     * SWI 01h (GBA) - RegisterRamReset
+     * Reset the I/O registers and RAM specified in ResetFlags. However, it does't clear the CPU internal RAM area from 3007E00h-3007FFFh.
+     */
 	case 0x1:
 		_RegisterRamReset(gba);
 		break;
+	/*
+     * SWI 02h (GBA) - Halt
+     * Halts the CPU until an interrupt request occurs. The CPU is switched into low-power mode,
+     * all other circuits (video, sound, timers, serial, keypad, system clock) are kept operating.
+     * 
+     * Halt mode is terminated when any enabled interrupts are requested, that is when (IE AND IF)
+     * is not zero, the GBA locks up if that condition doesn't get true. However, the state of CPUs
+     * IRQ disable bit in CPSR register, and the IME register are don't care, Halt passes through
+     * even if either one has disabled interrupts.
+	 * 
+     * Halt is implemented by writing to HALTCNT, Port 4000301h. all registers unchanged
+     * 
+     * GBA I/O Map
+     * Interrupt, Waitstate, and Power-Down Control
+     * 4000200h  2    R/W  IE        Interrupt Enable Register
+     * 4000202h  2    R/W  IF        Interrupt Request Flags / IRQ Acknowledge
+     * 4000301h  1    W    HALTCNT   Undocumented - Power Down Control
+     * 4000208h  2    R/W  IME       Interrupt Master Enable Register
+     */
 	case 0x2:
 		GBAHalt(gba);
 		break;
+	/*
+	 * SWI 05h - VBlankIntrWait
+	 * Continues to wait in Halt status until a new V-Blank interrupt occurs.
+	 * The function sets r0=1 and r1=1 and does then execute IntrWait (SWI 04h)
+	 */
 	case 0x05:
 		// VBlankIntrWait
 		// Fall through:
+	/*
+	 * SWI 04h - IntrWait
+	 * 
+	 */
 	case 0x04:
-		// IntrWait
+		// IntrWait(interrupt wait)
 		ARMRaiseSWI(cpu);
 		break;
 	case 0x6:
