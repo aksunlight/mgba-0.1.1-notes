@@ -169,22 +169,7 @@ void ARMRaiseIRQ(struct ARMCore* cpu) {
 	cpu->cpsr.i = 1;
 }
 
-/*
- * 拉起SWI中断
- *
- * BIOS Halt Functions
- * SWI 04h (GBA) - IntrWait
- * Continues to wait in Halt state until one (or more) of the specified interrupt(s) do occur.
- * The function forcefully sets IME=1. When using multiple interrupts at the same time,
- * this function is having less overhead than repeatedly calling the Halt function.
- * 
- * GBA I/O Map
- * Interrupt, Waitstate, and Power-Down Control
- * 4000200h  2    R/W  IE        Interrupt Enable Register
- * 4000202h  2    R/W  IF        Interrupt Request Flags / IRQ Acknowledge
- * 4000301h  1    W    HALTCNT   Undocumented - Power Down Control
- * 4000208h  2    R/W  IME       Interrupt Master Enable Register
- */
+// 拉起IRQ中断
 void ARMRaiseSWI(struct ARMCore* cpu) {
 	union PSR cpsr = cpu->cpsr;
 	int instructionWidth;

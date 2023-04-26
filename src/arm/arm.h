@@ -89,7 +89,7 @@ N Z C V    Unsed    I F T Mode
 31-28      27-8     7 6 5 4-0
 
 I: IRQ disable
-F: FIQ disable
+*F: FIQ disable
 CPSR寄存器条件标志位的意义如下：
 N：负数，改变标志位的最后的ALU操作产生负数结果（32位结果的最高位是1）
 Z：零，改变标志位的最后的ALU操作产生0结果（32位结果的每一位都是0）
@@ -127,11 +127,12 @@ Address     Exception              Mode on entry      I state on entry      F st
 0x00000000  Reset                   Supervisor              Set                  Set
 0x00000004  Undefined instruction   Undefined               Set                Unchanged
 0x00000008  Software interrupt      Supervisor              Set                Unchanged
+            instruction(SWI)
 0x0000000C  Prefetch Abort             Abort                Set                Unchanged
 0x00000010  Data Abort                 Abort                Set                Unchanged
 0x00000014  Reserved                 Reserved                -                     -
-0x00000018  IRQ                        IRQ                  Set                Unchanged
-0x0000001C  FIQ                        FIQ                  Set                  Set
+0x00000018  Interrupt request(IRQ)     IRQ                  Set                Unchanged
+0x0000001C  *Fast interrupt request(FIQ) FIQ                Set                  Set
 
 异常优先级：
 Priority    Exception
@@ -154,7 +155,7 @@ ARM处理器从异常中返回过程：
 2.恢复被中断的程序处理器的状态，即将SPSR_mode寄存器的内容复制到当前程序状态寄存器CPSR中
 3.返回到异常发生的下一条指令处执行，即将ir_mode寄存器的内容复制到程序计数器PC中
 */
-enum ExecutionVector {          //异常向量表/中断向量表
+enum ExecutionVector {          //异常向量表
 	BASE_RESET = 0x00000000,    //复位：处理器在工作时, 突然按下重启键, 就会触发该异常
 	BASE_UNDEF = 0x00000004,    //未定义指令：处理器无法识别指令的异常, 就会触发该异常
 	BASE_SWI = 0x00000008,      //软件中断：软中断, 一般用于操作系统的系统调用入口
@@ -297,13 +298,13 @@ struct ARMMemory {
 
 struct ARMInterruptHandler {									//ARM中断处理程序
 	void (*reset)(struct ARMCore* cpu);							//复位异常
-	void (*processEvents)(struct ARMCore* cpu);					//FIQ、IRQ硬件中断
+	void (*processEvents)(struct ARMCore* cpu);					//IRQ硬件中断
 	void (*swi16)(struct ARMCore* cpu, int immediate);			//16位软中断
 	void (*swi32)(struct ARMCore* cpu, int immediate);			//32位软中断
-	void (*hitIllegal)(struct ARMCore* cpu, uint32_t opcode);	//未定义指令异常
-	void (*readCPSR)(struct ARMCore* cpu);						//读当前程序状态寄存器	
+	void (*hitIllegal)(struct ARMCore* cpu, uint32_t opcode);	//未定义指令异常?
+	void (*readCPSR)(struct ARMCore* cpu);						//读当前程序状态寄存器?	
 
-	void (*hitStub)(struct ARMCore* cpu, uint32_t opcode);		//指令预取中止异常、数据中止异常
+	void (*hitStub)(struct ARMCore* cpu, uint32_t opcode);		//指令预取中止异常、数据中止异常?
 };
 
 struct ARMComponent {	//ARM进程？
@@ -346,8 +347,8 @@ void ARMSetComponents(struct ARMCore* cpu, struct ARMComponent* master, int extr
 
 void ARMReset(struct ARMCore* cpu);		//重置
 void ARMSetPrivilegeMode(struct ARMCore*, enum PrivilegeMode);	//设置工作模式
-void ARMRaiseIRQ(struct ARMCore*);		//拉起普通中断
-void ARMRaiseSWI(struct ARMCore*);		//拉起软中断
+void ARMRaiseIRQ(struct ARMCore*);		//拉起IRQ中断
+void ARMRaiseSWI(struct ARMCore*);		//拉起SWI中断
 
 void ARMRun(struct ARMCore* cpu);		//单步运行
 void ARMRunLoop(struct ARMCore* cpu);	//循环运行

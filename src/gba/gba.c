@@ -181,12 +181,12 @@ void GBADestroy(struct GBA* gba) {
 //GBA中断句柄初始化，即ARM核中断句柄初始化
 void GBAInterruptHandlerInit(struct ARMInterruptHandler* irqh) {
 	irqh->reset = GBAReset;						//复位异常
-	irqh->processEvents = GBAProcessEvents;		//FIQ、IRQ硬件中断
-	irqh->swi16 = GBASwi16;						//16位软中断
-	irqh->swi32 = GBASwi32;						//32位软中断
-	irqh->hitIllegal = GBAIllegal;				//未定义指令异常
-	irqh->readCPSR = GBATestIRQ;				//读当前程序状态寄存器
-	irqh->hitStub = GBAHitStub;					//指令预取中止异常、数据中止异常
+	irqh->processEvents = GBAProcessEvents;		//IRQ硬件中断
+	irqh->swi16 = GBASwi16;						//16位SWI中断
+	irqh->swi32 = GBASwi32;						//32位SWI中断
+	irqh->hitIllegal = GBAIllegal;				//未定义指令异常?
+	irqh->readCPSR = GBATestIRQ;				//读当前程序状态寄存器?
+	irqh->hitStub = GBAHitStub;					//指令预取中止异常、数据中止异常?
 }
 
 //复位异常处理程序
@@ -214,7 +214,7 @@ void GBAReset(struct ARMCore* cpu) {
 	memset(gba->timers, 0, sizeof(gba->timers));
 }
 
-//FIQ、IRQ硬件中断处理程序
+//IRQ硬件中断处理程序
 static void GBAProcessEvents(struct ARMCore* cpu) {
 	do {
 		struct GBA* gba = (struct GBA*) cpu->master;
@@ -571,6 +571,24 @@ void GBATestIRQ(struct ARMCore* cpu) {
 	}
 }
 
+/*
+ * SWI 02h (GBA) - Halt
+ * Halts the CPU until an interrupt request occurs. The CPU is switched into low-power mode,
+ * all other circuits (video, sound, timers, serial, keypad, system clock) are kept operating.
+ * 
+ * Halt mode is terminated when any enabled interrupts are requested, that is when (IE AND IF)
+ * is not zero, the GBA locks up if that condition doesn't get true. However, the state of CPUs
+ * IRQ disable bit in CPSR register, and the IME register are don't care, Halt passes through
+ * even if either one has disabled interrupts.
+ * 
+ * Halt is implemented by writing to HALTCNT, Port 4000301h. all registers unchanged
+ * 
+ * GBA I/O Map
+ * Interrupt, Waitstate, and Power-Down Control
+ * 4000200h  2    R/W  IE        Interrupt Enable Register
+ * 4000202h  2    R/W  IF        Interrupt Request Flags / IRQ Acknowledge
+ * 4000301h  1    W    HALTCNT   Undocumented - Power Down Control
+ */
 void GBAHalt(struct GBA* gba) {
 	gba->cpu->nextEvent = 0;
 	gba->cpu->halted = 1;
@@ -655,7 +673,7 @@ void GBAGetGameTitle(struct GBA* gba, char* out) {
 	memcpy(out, &((struct GBACartridge*) gba->memory.rom)->title, 12);
 }
 
-//指令预取中止异常、数据中止异常处理程序
+//指令预取中止异常、数据中止异常处理程序?
 void GBAHitStub(struct ARMCore* cpu, uint32_t opcode) {
 	struct GBA* gba = (struct GBA*) cpu->master;
 	enum GBALogLevel level = GBA_LOG_FATAL;
@@ -666,7 +684,7 @@ void GBAHitStub(struct ARMCore* cpu, uint32_t opcode) {
 	GBALog(gba, level, "Stub opcode: %08x", opcode);
 }
 
-//未定义指令异常
+//未定义指令异常?
 void GBAIllegal(struct ARMCore* cpu, uint32_t opcode) {
 	struct GBA* gba = (struct GBA*) cpu->master;
 	GBALog(gba, GBA_LOG_WARN, "Illegal opcode: %08x", opcode);

@@ -16,7 +16,62 @@ static void _unLz77(struct GBA* gba, uint32_t source, uint32_t dest, int width);
 static void _unHuffman(struct GBA* gba, uint32_t source, uint32_t dest);
 static void _unRl(struct GBA* gba, uint32_t source, uint32_t dest, int width);
 
-// BIOS Function Summary
+/* 
+ * BIOS Function Summary
+ * 00000000-00003FFF	BIOS - System ROM	(16 KBytes)
+ * 
+ * GBA   Basic Functions(基础功能)
+ * 00h   SoftReset
+ * 01h   RegisterRamReset
+ * 02h   Halt
+ * 03h   Stop/Sleep
+ * 04h   IntrWait
+ * 05h   VBlankIntrWait
+ * 06h   Div
+ * 07h   DivArm
+ * 08h   Sqrt
+ * 09h   ArcTan
+ * 0Ah   ArcTan2
+ * 0Bh   CpuSet
+ * 0Ch   CpuFastSet
+ * 0Dh   GetBiosChecksum
+ * 0Eh   BgAffineSet
+ * 0Fh   ObjAffineSet
+ * 
+ * GBA   Decompression Functions(解压功能)
+ * 10h   BitUnPack
+ * 11h   LZ77UnCompReadNormalWrite8bit   ;"Wram"
+ * 12h   LZ77UnCompReadNormalWrite16bit  ;"Vram"
+ * 13h   HuffUnCompReadNormal
+ * 14h   RLUnCompReadNormalWrite8bit     ;"Wram"
+ * 15h   RLUnCompReadNormalWrite16bit    ;"Vram"
+ * 16h   Diff8bitUnFilterWrite8bit       ;"Wram"
+ * 17h   Diff8bitUnFilterWrite16bit      ;"Vram"
+ * 18h   Diff16bitUnFilter
+ * 
+ * GBA   Sound (and Multiboot/HardReset/CustomHalt)
+ * 19h   SoundBias
+ * 1Ah   SoundDriverInit
+ * 1Bh   SoundDriverMode
+ * 1Ch   SoundDriverMain
+ * 1Dh   SoundDriverVSync
+ * 1Eh   SoundChannelClear
+ * 1Fh   MidiKey2Freq
+ * 20h   SoundWhatever0
+ * 21h   SoundWhatever1
+ * 22h   SoundWhatever2
+ * 23h   SoundWhatever3
+ * 24h   SoundWhatever4
+ * 25h   MultiBoot
+ * 26h   HardReset
+ * 27h   CustomHalt
+ * 28h   SoundDriverVSyncOff
+ * 29h   SoundDriverVSyncOn
+ * 2Ah   SoundGetJumpList
+ * 
+ * GBA   Invalid Functions
+ * 2Bh+  Crash (SWI xxh..FFh do jump to garbage addresses)
+ */
 
 static void _RegisterRamReset(struct GBA* gba) {
 	uint32_t registers = gba->cpu->gprs[0];
@@ -125,6 +180,19 @@ static void _MidiKey2Freq(struct GBA* gba) {
 	cpu->gprs[0] = key / powf(2, (180.f - cpu->gprs[1] - cpu->gprs[2] / 256.f) / 12.f);
 }
 
+/*
+ * BIOS Arithmetic Functions
+ * SWI 06h (GBA) - Div
+ * 
+ * Signed Division, 带符号除法
+ *   r0  signed 32bit Number
+ *   r1  signed 32bit Denom
+ * Return:
+ *   r0  Number DIV Denom ;signed
+ *   r1  Number MOD Denom ;signed
+ *   r3  ABS (Number DIV Denom) ;unsigned
+ * 
+ */
 static void _Div(struct GBA* gba, int32_t num, int32_t denom) {
 	struct ARMCore* cpu = gba->cpu;
 	if (denom != 0) {
@@ -142,7 +210,7 @@ static void _Div(struct GBA* gba, int32_t num, int32_t denom) {
 	}
 }
 
-//16位软中断处理程序
+//16位SWI中断处理程序
 void GBASwi16(struct ARMCore* cpu, int immediate) {
 	struct GBA* gba = (struct GBA*) cpu->master;
 	GBALog(gba, GBA_LOG_SWI, "SWI: %02X r0: %08X r1: %08X r2: %08X r3: %08X",
@@ -154,31 +222,30 @@ void GBASwi16(struct ARMCore* cpu, int immediate) {
 	}
 	switch (immediate) {
 	/*
-     * SWI 01h (GBA) - RegisterRamReset
-     * Reset the I/O registers and RAM specified in ResetFlags. However, it does't clear the CPU internal RAM area from 3007E00h-3007FFFh.
-     */
+	 * SWI 01h (GBA) - RegisterRamReset
+	 * Reset the I/O registers and RAM specified in ResetFlags. However, it does't clear the CPU internal RAM area from 3007E00h-3007FFFh.
+	 */
 	case 0x1:
 		_RegisterRamReset(gba);
 		break;
 	/*
-     * SWI 02h (GBA) - Halt
-     * Halts the CPU until an interrupt request occurs. The CPU is switched into low-power mode,
-     * all other circuits (video, sound, timers, serial, keypad, system clock) are kept operating.
-     * 
-     * Halt mode is terminated when any enabled interrupts are requested, that is when (IE AND IF)
-     * is not zero, the GBA locks up if that condition doesn't get true. However, the state of CPUs
-     * IRQ disable bit in CPSR register, and the IME register are don't care, Halt passes through
-     * even if either one has disabled interrupts.
+	 * SWI 02h (GBA) - Halt
+	 * Halts the CPU until an interrupt request occurs. The CPU is switched into low-power mode,
+	 * all other circuits (video, sound, timers, serial, keypad, system clock) are kept operating.
 	 * 
-     * Halt is implemented by writing to HALTCNT, Port 4000301h. all registers unchanged
-     * 
-     * GBA I/O Map
-     * Interrupt, Waitstate, and Power-Down Control
-     * 4000200h  2    R/W  IE        Interrupt Enable Register
-     * 4000202h  2    R/W  IF        Interrupt Request Flags / IRQ Acknowledge
-     * 4000301h  1    W    HALTCNT   Undocumented - Power Down Control
-     * 4000208h  2    R/W  IME       Interrupt Master Enable Register
-     */
+	 * Halt mode is terminated when any enabled interrupts are requested, that is when (IE AND IF)
+	 * is not zero, the GBA locks up if that condition doesn't get true. However, the state of CPUs
+	 * IRQ disable bit in CPSR register, and the IME register are don't care, Halt passes through
+	 * even if either one has disabled interrupts.
+	 * 
+	 * Halt is implemented by writing to HALTCNT, Port 4000301h. all registers unchanged
+	 * 
+	 * GBA I/O Map
+	 * Interrupt, Waitstate, and Power-Down Control
+	 * 4000200h  2    R/W  IE        Interrupt Enable Register
+	 * 4000202h  2    R/W  IF        Interrupt Request Flags / IRQ Acknowledge
+	 * 4000301h  1    W    HALTCNT   Undocumented - Power Down Control
+	 */
 	case 0x2:
 		GBAHalt(gba);
 		break;
@@ -192,7 +259,16 @@ void GBASwi16(struct ARMCore* cpu, int immediate) {
 		// Fall through:
 	/*
 	 * SWI 04h - IntrWait
+	 * SWI 04h (GBA) - IntrWait
+	 * Continues to wait in Halt state until one (or more) of the specified interrupt(s) do occur.
+	 * The function forcefully sets IME=1. When using multiple interrupts at the same time,
+	 * this function is having less overhead than repeatedly calling the Halt function.
 	 * 
+	 * GBA I/O Map
+	 * Interrupt, Waitstate, and Power-Down Control
+	 * 4000200h  2    R/W  IE        Interrupt Enable Register
+	 * 4000202h  2    R/W  IF        Interrupt Request Flags / IRQ Acknowledge
+	 * 4000208h  2    R/W  IME       Interrupt Master Enable Register
 	 */
 	case 0x04:
 		// IntrWait(interrupt wait)
@@ -210,6 +286,10 @@ void GBASwi16(struct ARMCore* cpu, int immediate) {
 	case 0xA:
 		cpu->gprs[0] = atan2f(cpu->gprs[1] / 16384.f, cpu->gprs[0] / 16384.f) / (2 * M_PI) * 0x10000;
 		break;
+	/*
+	 * SWI 0Ch - CpuSet
+	 * 
+	 */
 	case 0xB:
 	case 0xC:
 		ARMRaiseSWI(cpu);
@@ -278,7 +358,7 @@ void GBASwi16(struct ARMCore* cpu, int immediate) {
 	gba->memory.biosPrefetch = 0xE3A02004;
 }
 
-//32位软中断处理程序
+//32位SWI中断处理程序
 void GBASwi32(struct ARMCore* cpu, int immediate) {
 	GBASwi16(cpu, immediate >> 16);
 }

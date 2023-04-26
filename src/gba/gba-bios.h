@@ -10,6 +10,10 @@
 
 #include "arm.h"
 
+/*
+ * The BIOS includes several System Call Functions which can be accessed by SWI instructions.
+ * When invoking SWIs from inside of ARM state specify SWI NN*10000h, instead of SWI NN as in THUMB state.
+ */
 void GBASwi16(struct ARMCore* cpu, int immediate);
 void GBASwi32(struct ARMCore* cpu, int immediate);
 
