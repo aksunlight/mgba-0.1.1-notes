@@ -130,3 +130,33 @@ void GBADestroy(struct GBA* gba) {
 
 
 GBA rerecording: gba-rr
+
+
+
+
+GBA游戏卡带：GBA Game Pak
+
+External Memory (Game Pak)	GBA卡带内存映射
+  08000000-09FFFFFF   Game Pak ROM/FlashROM (max 32MB) - Wait State 0
+  0A000000-0BFFFFFF   Game Pak ROM/FlashROM (max 32MB) - Wait State 1
+  0C000000-0DFFFFFF   Game Pak ROM/FlashROM (max 32MB) - Wait State 2
+  0E000000-0E00FFFF   Game Pak SRAM    (max 64 KBytes) - 8bit Bus width
+  0E010000-0FFFFFFF   Not used
+
+Game Pak Bus - 32pin cartridge slot(32引脚的卡带插槽)
+The cartridge bus may be used for both CGB and GBA game paks. In GBA mode, it is used as follows:
+ Pin    Name    Dir  Expl.
+ 1      VDD     O    Power Supply 3.3V DC
+ 2      PHI     O    System Clock (selectable none, 4.19MHz, 8.38MHz, 16.78MHz)
+ 3      /WR     O    Write Select    ;\latched address to be incremented on
+ 4      /RD     O    Read Select     ;/rising edges of /RD or /WR signals
+ 5      /CS     O    ROM Chip Select ;-A0..A15 to be latched on falling edge
+ 6-21   AD0-15  I/O  lower 16bit Address    and/or  16bit ROM-data (see below)
+ 22-29  A16-23  I/O  upper 8bit ROM-Address   or    8bit SRAM-data (see below)
+ 30     /CS2    O    SRAM Chip Select
+ 31     /REQ    I    Interrupt request (/IREQ) or DMA request (/DREQ)
+ 32     GND     O    Ground 0V
+
+When accessing game pak SRAM, a 16bit address is output through AD0-AD15, then 8bit of data are transferred through A16-A23.
+When accessing game pak ROM, a 24bit address is output through AD0-AD15 and A16-A23, then 16bit of data are transferred through AD0-AD15.
+The 24bit address is formed from the actual 25bit memory address (byte-steps), divided by two (halfword-steps).

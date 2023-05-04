@@ -264,6 +264,15 @@ void GBASwi16(struct ARMCore* cpu, int immediate) {
 	 * The function forcefully sets IME=1. When using multiple interrupts at the same time,
 	 * this function is having less overhead than repeatedly calling the Halt function.
 	 * 
+	 * Caution: When using IntrWait or VBlankIntrWait, the user interrupt handler MUST update the BIOS
+	 * Interrupt Flags value in RAM; when acknowleding processed interrupt(s) by writing a value to the IF register,
+	 * the same value should be also ORed to the BIOS Interrupt Flags value, at following memory location:
+	 * 注意：当使用 IntrWait 或 VBlankIntrWait 时，用户中断处理程序必须更新 RAM 中的 BIOS 中断标志值；
+	 * 当通过向 IF 寄存器写入一个值来确认已处理的中断时，同样的值也应该与 BIOS 中断标志值进行或运算，位于以下内存位置：3007FF8h
+	 * 
+	 * No return value, the selected flag(s) are automatically reset in BIOS Interrupt Flags value in RAM upon return.
+	 * 没有返回值，所选标志在返回时自动在 RAM 中的 BIOS 中断标志值中重置。
+	 * 
 	 * GBA I/O Map
 	 * Interrupt, Waitstate, and Power-Down Control
 	 * 4000200h  2    R/W  IE        Interrupt Enable Register
@@ -288,7 +297,7 @@ void GBASwi16(struct ARMCore* cpu, int immediate) {
 		break;
 	/*
 	 * SWI 0Ch - CpuSet
-	 * 
+	 * SWI 0Bh - CpuSet
 	 */
 	case 0xB:
 	case 0xC:
@@ -305,6 +314,11 @@ void GBASwi16(struct ARMCore* cpu, int immediate) {
 	case 0xF:
 		_ObjAffineSet(gba);
 		break;
+	/*
+	 * LZ77UnCompReadNormalWrite8bit (Wram) - SWI 11h
+     * LZ77UnCompReadNormalWrite16bit (Vram) - SWI 12h
+	 * HuffUnCompReadNormal - SWI 13h
+	 */
 	case 0x11:
 	case 0x12:
 		if (cpu->gprs[0] < BASE_WORKING_RAM) {
@@ -334,6 +348,10 @@ void GBASwi16(struct ARMCore* cpu, int immediate) {
 				break;
 		}
 		break;
+	/*
+	 * RLUnCompReadNormalWrite8bit (Wram) - SWI 14h
+     * RLUnCompReadNormalWrite16bit (Vram) - SWI 15h
+	 */
 	case 0x14:
 	case 0x15:
 		if (cpu->gprs[0] < BASE_WORKING_RAM) {
@@ -349,6 +367,9 @@ void GBASwi16(struct ARMCore* cpu, int immediate) {
 				break;
 		}
 		break;
+	/*
+	 * SWI 1Fh - MidiKey2Freq
+	 */
 	case 0x1F:
 		_MidiKey2Freq(gba);
 		break;
