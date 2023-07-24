@@ -17,8 +17,9 @@ GB中渲染一帧的数据量（只包括背景）：8*8的方块包含的数据
 window  窗口，窗口可以覆盖背景，可用用来作为分数面板
 
 
-sprites 精灵，在背景和窗口图层之上的不受形状限制的物体方块（但最多也只能有64个像素），GB中叫做object，GB中有40个精灵，GBA中有36个
-精灵的数据（OAM记录）存储在OAM RAM中，它也是VRAM中的一块区域
+sprites 精灵，在背景和窗口图层之上的不受形状限制的物体方块（但最多也只能有64个像素），任天堂把它叫做object，GB中有40个精灵，GBA中有36个精灵
+所有用到的精灵方块（Sprite Tiles）都存储在VRAM中的某一块区域
+精灵的相关数据（OAM记录——记录了精灵的方位信息）存储在OAM RAM中
 
 OAM数据结构：
 Position x
@@ -30,7 +31,7 @@ Filp y
 Palette
 
 
-VRAM Memory MAP
+VRAM Memory MAP（GB）
 4KB Sprite Tiles: 256 tiles * 16bytes
 4KB BG Tiles: 256 tiles * 16bytes
 1KB BG Map: 32 * 32 indexes
@@ -38,9 +39,13 @@ VRAM Memory MAP
 1和2有重合部分
 
 
-
-
-GBA图像处理：
+GBA Internal Display Memory
+05000000-050003FF   BG/OBJ Palette RAM        (1 Kbyte)
+05000400-05FFFFFF   Not used
+06000000-06017FFF   VRAM - Video RAM          (96 KBytes)
+06018000-06FFFFFF   Not used
+07000000-070003FF   OAM - OBJ Attributes      (1 Kbyte)
+07000400-07FFFFFF   Not used
 
 
 
