@@ -84,17 +84,11 @@ ARM芯片有USER、FIQ、IRQ、SVC、ABT、SYS、UND七种工作模式，除了U
 ARM指令集中提供了两条产生异常的指令，通过这两条指令可以用软件的方法实现异常，其中一个就是软中断指令SWI
 访管模式是CPU上电后默认模式，因此在该模式下主要用来做系统的初始化，软中断处理也在该模式下，当用户模式下的用户程序请求使用硬件资源时通过软件中断进入该模式
 
-ARM CPSR寄存器格式（v4T架构）：
+ARM程序状态寄存器格式（v4T架构）：
 N Z C V    Unsed    I F T Mode
 31-28      27-8     7 6 5 4-0
-
 I: IRQ disable
 *F: FIQ disable
-CPSR寄存器条件标志位的意义如下：
-N：负数，改变标志位的最后的ALU操作产生负数结果（32位结果的最高位是1）
-Z：零，改变标志位的最后的ALU操作产生0结果（32位结果的每一位都是0）
-C：进位/借位，改变标志位的最后的ALU操作产生到符号位的进位
-V：溢出，改变标志位的最后的ALU操作产生到符号位的溢出
 */
 enum PrivilegeMode {    //各个工作模式下PSR寄存器设置
 	MODE_USER = 0x10,           //用户模式(PSR低5位为10000)，正常程序运行模式
@@ -203,7 +197,7 @@ struct ARMCore;
 ARM芯片的程序状态寄存器PSR（Program State Register）有两个
 一个是当前程序状态寄存器CPSR（Current Program State Register）
 另一个是保存的程序状态寄存器SPSR（Saved Program State Register）
-除user、sys外的5种处理器模式都有一个专用的物理寄存器作为备份的程序状态寄存器
+除user、sys外的5种处理器模式都有一个专用的物理寄存器作为备份的程序状态寄存器SPSR
 当异常发生时, 这个物理寄存器负责保存CPSR当前程序状态寄存器的内容
 当异常处理程序返回时, 再将内容恢复到当前程序状态器中, 恢复现场后继续执行原来程序
 
@@ -229,6 +223,19 @@ V：For an addition or subtraction, V is set to 1 if signed overflow occurred, r
 operands and result as two's complement signed integers.
 For non-addition/subtractions, V is normally left unchanged (but see the individual 
 instruction descriptions for any special cases).
+
+CPSR寄存器条件标志位的意义如下：
+N：负数，改变标志位的最后的ALU操作产生负数结果（32位结果的最高位是1）
+Z：零，改变标志位的最后的ALU操作产生0结果（32位结果的每一位都是0）
+C：进位/借位，改变标志位的最后的ALU操作产生到符号位的进位
+V：溢出，改变标志位的最后的ALU操作产生到符号位的溢出
+
+ARM状态下，所有指令根据指令的条件域和CPSR寄存器条件标志位来有条件执行
+具体来说指令执行时会根据指令条件域去检测CPSR寄存器条件标志位，如果CPSR
+寄存器条件标志位的值满足指令条件域要求，则指令被执行
+For example, a Branch (B in assembly language) becomes BEQ for "Branch if Equal",
+which means the Branch will only be taken if the Z flag is set.
+
 */
 union PSR {
 	struct {	//位域语法：type-specifier declarator(opt):constant-expression
