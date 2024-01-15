@@ -206,8 +206,8 @@ N Z C V    Unsed    I F T Mode
 31-28      27-8     7 6 5 4-0
 
 CPSR寄存器条件标志位的意义如下：The N, Z, C, and V (Negative, Zero, Carry and oVerflow)
-N：Is set to bit 31 of the result of the instruction. **If this result is regarded as a two's complement 
-signed integer**, then N = 1 if the result is negative and N = 0 if it is positive or zero.
+N：Is set to bit 31 of the result of the instruction. **If this result is regarded as a two's complement
+(补码) signed integer**, then N = 1 if the result is negative and N = 0 if it is positive or zero.
 Z：Is set to 1 if the result of the instruction is zero (this often indicates an equal result from a 
 comparison), and to 0 otherwise.
 C：For an addition, including the comparison instruction CMN, C is set to 1 if the 
@@ -220,7 +220,7 @@ shifted out of the value by the shifter.  移位操作会改变C标志位，C标
 For other non-addition/subtractions, C is normally left unchanged (but see the 
 individual instruction descriptions for any special cases).
 V：For an addition or subtraction, V is set to 1 if signed overflow occurred, regarding the 
-operands and result as two's complement signed integers.
+operands and result as two's complement(补码) signed integers.
 For non-addition/subtractions, V is normally left unchanged (but see the individual 
 instruction descriptions for any special cases).
 
@@ -236,6 +236,7 @@ ARM状态下，所有指令根据指令的条件域和CPSR寄存器条件标志�
 For example, a Branch (B in assembly language) becomes BEQ for "Branch if Equal",
 which means the Branch will only be taken if the Z flag is set.
 
+Thumb状态下，仅有分支指令是有条件执行的
 */
 union PSR {
 	struct {	//位域语法：type-specifier declarator(opt):constant-expression

@@ -15,7 +15,7 @@ isa-thumb.h  isa-thumb.c
 THUMB模式下所有指令的定义和实现
 
 decoder-inlines.h  decoder.h  decoder.c  decoder-arm.c  decoder-thumb.c
-反汇编，解码二进制机器码，提取32位二进制机器码的信息
+反汇编，解码汇编代码，提取32位二进制机器码的信息
 
 emitter-inlines.h  emitter-arm.h  emitter-thumb.h
 所有指令的宏定义，DECLARE_ARM_EMITTER_BLOCK(EMITTER)，DECLARE_THUMB_EMITTER_BLOCK
@@ -23,7 +23,7 @@ emitter-inlines.h  emitter-arm.h  emitter-thumb.h
 
 
 
-ARM指令反汇编：解码二进制机器码，提取32位二进制机器码的信息
+ARM指令反汇编：解码汇编代码，提取32位二进制机器码的信息
 decoder.h
 struct ARMInstructionInfo {		//保存指令信息：将32位二进制机器码的信息提取到该结构体
 	uint32_t opcode;

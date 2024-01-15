@@ -192,7 +192,7 @@ void ARMRaiseSWI(struct ARMCore* cpu) {
 
 /*
 ARM7TDMI芯片 -> ARMv4T指令集
-ARM处理器数据处理指令格式：
+ARM处理器数据处理指令(不包括乘法指令)格式：
 31-28	27-25	24-21	20  	19-16	15-12	11-0
 cond	001		opcode	S		Rn		Rd		Operand2 
 cond：执行条件，如EQ，NE等，To execute this only if the zero flag is set:ADDEQ r0,r1,r2(If zero flag set then r0 = r1 + r2)

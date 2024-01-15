@@ -132,7 +132,7 @@ struct ARMMemoryAccess {		//ARM内存访问
 	union ARMOperand offset;	//偏移量
 };
 
-enum ARMMnemonic {				//ARM操作码（助记符）
+enum ARMMnemonic {				//ARM指令操作码（助记符）
 	ARM_MN_ILL = 0,
 	ARM_MN_ADC,
 	ARM_MN_ADD,
@@ -205,8 +205,8 @@ struct ARMInstructionInfo {		//指令信息
 	unsigned nDataCycles : 10;
 };
 
-void ARMDecodeARM(uint32_t opcode, struct ARMInstructionInfo* info);						//解码32ARM位指令
-void ARMDecodeThumb(uint16_t opcode, struct ARMInstructionInfo* info);						//解码16THUMB位指令
+void ARMDecodeARM(uint32_t opcode, struct ARMInstructionInfo* info);						//解码ARM汇编指令
+void ARMDecodeThumb(uint16_t opcode, struct ARMInstructionInfo* info);						//解码THUMB汇编指令
 int ARMDisassemble(struct ARMInstructionInfo* info, uint32_t pc, char* buffer, int blen);	//反汇编
 
 #endif
