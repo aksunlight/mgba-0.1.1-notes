@@ -197,6 +197,30 @@ enum LSMDirection {//加载向量表, 所有批量加载/存储指令必须指�
 struct ARMCore;
 
 /*
+ARM状态下，所有指令根据指令的条件域和CPSR寄存器条件标志位来有条件执行（Thumb状态下，仅有分支指令是有条件执行的）
+具体来说指令执行时会根据指令条件域去检测CPSR寄存器条件标志位，如果CPSR寄存器条件标志位的值满足指令条件域要求，则指令被执行
+For example, a Branch (B in assembly language) becomes BEQ for "Branch if Equal",
+which means the Branch will only be taken if the Z flag is set.
+
+Condition      Suffix      Flags               Meaning
+0000           EQ          Z set               equal
+0001           NE          Z clear             not equal
+0010           CS          C set               unsigned higher or same
+0011           CC          C clear             unsigned lower
+0100           MI          N set               negative
+0101           PL          N clear             positive or zero
+0110           VS          V set               overflow
+0111           VC          V clear             no overflow
+1000           HI          C set and Z clear   unsigned higher
+1001           LS          C clear or Z set    unsigned lower or same
+1010           GE          N equals V          greater or equal
+1011           LT          N not equal to V    less than
+1100           GT          Z clear AND 
+                           (N equals V)        greater than
+1101           LE          Z set OR 
+                           (N not equal to V)  less than or equal
+1110           AL          (ignored)           always
+
 ARM芯片的程序状态寄存器PSR（Program State Register）有两个
 一个是当前程序状态寄存器CPSR（Current Program State Register）
 另一个是保存的程序状态寄存器SPSR（Saved Program State Register）
@@ -206,7 +230,7 @@ ARM程序状态寄存器格式（v4T架构）：
 N Z C V    Unsed    I F T Mode
 31-28      27-8     7 6 5 4-0
 
-CPSR寄存器条件标志位的意义如下：The N, Z, C, and V (Negative, Zero, Carry and oVerflow)
+CPSR寄存器条件标志位的意义如下：The N, Z, C, and V (Negative, Zero, Carry and overflow)
 N：Is set to bit 31 of the result of the instruction. **If this result is regarded as a two's complement
 (补码) signed integer**, then N = 1 if the result is negative and N = 0 if it is positive or zero.
 Z：Is set to 1 if the result of the instruction is zero (this often indicates an equal result from a 
@@ -225,19 +249,10 @@ operands and result as two's complement(补码) signed integers.
 For non-addition/subtractions, V is normally left unchanged (but see the individual 
 instruction descriptions for any special cases).
 
-CPSR寄存器条件标志位的意义如下：
-N：负数，改变标志位的最后的ALU操作产生负数结果（32位结果的最高位是1）
-Z：零，改变标志位的最后的ALU操作产生0结果（32位结果的每一位都是0）
-C：进位/借位，改变标志位的最后的ALU操作产生到符号位的进位
-V：溢出，改变标志位的最后的ALU操作产生到符号位的溢出
-
-ARM状态下，所有指令根据指令的条件域和CPSR寄存器条件标志位来有条件执行
-具体来说指令执行时会根据指令条件域去检测CPSR寄存器条件标志位，如果CPSR
-寄存器条件标志位的值满足指令条件域要求，则指令被执行
-For example, a Branch (B in assembly language) becomes BEQ for "Branch if Equal",
-which means the Branch will only be taken if the Z flag is set.
-
-Thumb状态下，仅有分支指令是有条件执行的
+对于逻辑运算指令（AND, EOR, TST, TEQ, ORR, MOV, BIC, MVN），它执行逻辑操作对一个或多个操作数的所有对应位进行运算以产生结果
+如果指令S位被设置（并且Rd不是R15寄存器），CPSR的V标志位不会受影响，C标志位被设置为环形移位器的进位，Z标志位在运算结果为0时被置位，N标志位被设置为运算结果的第31位逻辑值
+对于算术运算指令（SUB, RSB, ADD, ADC, SBC, RSC, CMP, CMN)，它将每一个操作数看成是32位整数（无符号整数或者以二进制补码表示的有符号整数）
+如果指令S位被设置（并且Rd不是R15寄存器），如果发生到符号位的溢出则V标志位被置位，如果产生到符号位的进位则C标志位被置位，Z标志位在运算结果为0时被置位，N标志位被设置为运算结果的第31位的值
 */
 union PSR {
 	struct {	//位域语法：type-specifier declarator(opt):constant-expression
