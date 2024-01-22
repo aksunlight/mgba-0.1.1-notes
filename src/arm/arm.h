@@ -252,7 +252,7 @@ instruction descriptions for any special cases).
 对于逻辑运算指令（AND, EOR, TST, TEQ, ORR, MOV, BIC, MVN），它执行逻辑操作对一个或多个操作数的所有对应位进行运算以产生结果
 如果指令S位被设置（并且Rd不是R15寄存器），CPSR的V标志位不会受影响，C标志位被设置为环形移位器的进位，Z标志位在运算结果为0时被置位，N标志位被设置为运算结果的第31位逻辑值
 对于算术运算指令（SUB, RSB, ADD, ADC, SBC, RSC, CMP, CMN)，它将每一个操作数看成是32位整数（无符号整数或者以二进制补码表示的有符号整数）
-如果指令S位被设置（并且Rd不是R15寄存器），如果发生到符号位的溢出则V标志位被置位，如果产生到符号位的进位则C标志位被置位，Z标志位在运算结果为0时被置位，N标志位被设置为运算结果的第31位的值
+如果指令S位被设置（并且Rd不是R15寄存器），如果发生符号位的溢出则V标志位被置位，如果产生到符号位的进位则C标志位被置位，Z标志位在运算结果为0时被置位，N标志位被设置为运算结果的第31位的值
 */
 union PSR {
 	struct {	//位域语法：type-specifier declarator(opt):constant-expression
